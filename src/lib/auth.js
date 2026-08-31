@@ -2,6 +2,7 @@ import NextAuth from "next-auth";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "./prisma";
 import { authConfig } from "./auth.config";
+import { DIFFICULTIES } from "@/lib/game/difficulty";
 
 async function syncAdminRole(user) {
   if (!user?.id || !user?.email) return null;
@@ -15,13 +16,20 @@ async function syncAdminRole(user) {
     select: {
       id: true,
       role: true,
-      score: true,
-      wins: true,
-      losses: true,
-      draws: true,
-      winStreak: true,
     },
   });
+}
+
+async function ensureDefaultStats(userId) {
+  await Promise.all(
+    DIFFICULTIES.map((difficulty) =>
+      prisma.userStat.upsert({
+        where: { userId_difficulty: { userId, difficulty } },
+        create: { userId, difficulty },
+        update: {},
+      })
+    )
+  );
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -29,8 +37,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
   callbacks: {
     ...authConfig.callbacks,
-    // อย่าเรียก Prisma ที่นี่ — Auth.js เรียก signIn ก่อน createUser
-    // ถ้า update พังจะกลายเป็น error=AccessDenied
     async signIn() {
       return true;
     },
@@ -39,49 +45,24 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         let dbUser = null;
         try {
           dbUser = await syncAdminRole(user);
+          await ensureDefaultStats(user.id);
         } catch {
-          // user ใหม่อาจยังไม่พร้อม — อ่านค่าจาก DB ถ้ามี
           dbUser = await prisma.user.findUnique({
             where: { id: user.id },
-            select: {
-              id: true,
-              role: true,
-              score: true,
-              wins: true,
-              losses: true,
-              draws: true,
-              winStreak: true,
-            },
+            select: { id: true, role: true },
           });
         }
         token.id = dbUser?.id ?? user.id;
         token.role = dbUser?.role ?? "USER";
-        token.score = dbUser?.score ?? 0;
-        token.wins = dbUser?.wins ?? 0;
-        token.losses = dbUser?.losses ?? 0;
-        token.draws = dbUser?.draws ?? 0;
-        token.winStreak = dbUser?.winStreak ?? 0;
       }
 
       if (trigger === "update" && token.id) {
         const dbUser = await prisma.user.findUnique({
           where: { id: token.id },
-          select: {
-            role: true,
-            score: true,
-            wins: true,
-            losses: true,
-            draws: true,
-            winStreak: true,
-          },
+          select: { role: true },
         });
         if (dbUser) {
           token.role = dbUser.role;
-          token.score = dbUser.score;
-          token.wins = dbUser.wins;
-          token.losses = dbUser.losses;
-          token.draws = dbUser.draws;
-          token.winStreak = dbUser.winStreak;
         }
       }
 
@@ -92,6 +73,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async createUser({ user }) {
       try {
         await syncAdminRole(user);
+        if (user?.id) await ensureDefaultStats(user.id);
       } catch (error) {
         console.error("[auth] createUser syncAdminRole failed", error);
       }

@@ -12,31 +12,38 @@ import {
 } from "@/lib/game/game-engine";
 import { getBotMove } from "@/lib/game/minimax";
 import { calculateScore } from "@/lib/game/score";
+import { normalizeDifficulty } from "@/lib/game/difficulty";
+import { getUserStat } from "@/lib/game/stats";
 
 const bodySchema = z.object({
   position: z.number().int().min(0).max(8),
 });
 
-async function finishGame(tx, userId, result, currentStreak) {
+async function finishGame(tx, userId, difficulty, result, currentStreak) {
   const calc = calculateScore(result, currentStreak);
+  const level = normalizeDifficulty(difficulty);
 
-  const user = await tx.user.findUnique({ where: { id: userId } });
-  if (!user) throw new Error("User not found");
+  const current = await tx.userStat.upsert({
+    where: { userId_difficulty: { userId, difficulty: level } },
+    create: { userId, difficulty: level },
+    update: {},
+  });
 
-  const updated = await tx.user.update({
-    where: { id: userId },
+  const stat = await tx.userStat.update({
+    where: { id: current.id },
     data: {
-      score: user.score + calc.nextScoreDelta,
+      score: current.score + calc.nextScoreDelta,
       winStreak: calc.nextStreak,
-      wins: result === "WIN" ? user.wins + 1 : user.wins,
-      losses: result === "LOSS" ? user.losses + 1 : user.losses,
-      draws: result === "DRAW" ? user.draws + 1 : user.draws,
+      wins: result === "WIN" ? current.wins + 1 : current.wins,
+      losses: result === "LOSS" ? current.losses + 1 : current.losses,
+      draws: result === "DRAW" ? current.draws + 1 : current.draws,
     },
   });
 
   await tx.game.create({
     data: {
       userId,
+      difficulty: level,
       result,
       scoreChange: calc.scoreChange,
       bonusScore: calc.bonusScore,
@@ -44,7 +51,7 @@ async function finishGame(tx, userId, result, currentStreak) {
     },
   });
 
-  return { user: updated, calc };
+  return { stat, calc };
 }
 
 export async function POST(request) {
@@ -67,6 +74,8 @@ export async function POST(request) {
     return NextResponse.json({ error: "No active game" }, { status: 400 });
   }
 
+  const difficulty = normalizeDifficulty(activeGame.difficulty);
+
   let board;
   try {
     board = makeMove(
@@ -87,7 +96,7 @@ export async function POST(request) {
   let userStats = null;
 
   if (status === "PLAYING") {
-    botPosition = getBotMove(board);
+    botPosition = getBotMove(board, difficulty);
     if (botPosition !== null) {
       board = makeMove(board, botPosition, BOT);
       status = getGameStatus(board);
@@ -96,8 +105,14 @@ export async function POST(request) {
 
   if (status !== "PLAYING") {
     const result = await prisma.$transaction(async (tx) => {
-      const user = await tx.user.findUnique({ where: { id: userId } });
-      const finished = await finishGame(tx, userId, status, user.winStreak);
+      const current = await getUserStat(userId, difficulty, tx);
+      const finished = await finishGame(
+        tx,
+        userId,
+        difficulty,
+        status,
+        current.winStreak
+      );
 
       await tx.activeGame.update({
         where: { userId },
@@ -115,13 +130,7 @@ export async function POST(request) {
       bonusScore: result.calc.bonusScore,
       nextScoreDelta: result.calc.nextScoreDelta,
     };
-    userStats = {
-      score: result.user.score,
-      winStreak: result.user.winStreak,
-      wins: result.user.wins,
-      losses: result.user.losses,
-      draws: result.user.draws,
-    };
+    userStats = result.stat;
   } else {
     await prisma.activeGame.update({
       where: { userId },
@@ -131,22 +140,13 @@ export async function POST(request) {
       },
     });
 
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        score: true,
-        winStreak: true,
-        wins: true,
-        losses: true,
-        draws: true,
-      },
-    });
-    userStats = user;
+    userStats = await getUserStat(userId, difficulty);
   }
 
   return NextResponse.json({
     board,
     status,
+    difficulty,
     playerSymbol: PLAYER,
     botSymbol: BOT,
     turn: status === "PLAYING" ? "PLAYER" : null,

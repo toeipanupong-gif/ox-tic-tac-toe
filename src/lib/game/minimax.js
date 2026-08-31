@@ -5,6 +5,7 @@ import {
   getAvailableMoves,
   isDraw,
 } from "./game-engine.js";
+import { normalizeDifficulty } from "./difficulty.js";
 
 function evaluate(board) {
   const result = checkWinner(board);
@@ -39,7 +40,7 @@ function minimax(board, isMaximizing) {
   return best;
 }
 
-export function getBotMove(board) {
+function getMinimaxMove(board) {
   const moves = getAvailableMoves(board);
   if (moves.length === 0) return null;
 
@@ -57,4 +58,37 @@ export function getBotMove(board) {
   }
 
   return bestMove;
+}
+
+function findImmediateWin(board, symbol) {
+  for (const move of getAvailableMoves(board)) {
+    const next = [...board];
+    next[move] = symbol;
+    if (checkWinner(next)?.winner === symbol) return move;
+  }
+  return null;
+}
+
+function getHardMove(board) {
+  const winMove = findImmediateWin(board, BOT);
+  if (winMove !== null) return winMove;
+
+  const blockMove = findImmediateWin(board, PLAYER);
+  if (blockMove !== null) return blockMove;
+
+  return getMinimaxMove(board);
+}
+
+function getEasyMove(board) {
+  const moves = getAvailableMoves(board);
+  if (moves.length === 0) return null;
+  return moves[Math.floor(Math.random() * moves.length)];
+}
+
+/** @param {Array} board @param {"EASY"|"NORMAL"|"HARD"} [difficulty] */
+export function getBotMove(board, difficulty = "NORMAL") {
+  const level = normalizeDifficulty(difficulty);
+  if (level === "EASY") return getEasyMove(board);
+  if (level === "HARD") return getHardMove(board);
+  return getMinimaxMove(board);
 }

@@ -1,25 +1,27 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { getOrCreateAllStats } from "@/lib/game/stats";
+import DashboardStats from "@/components/dashboard/DashboardStats";
+import StartGameButton from "@/components/game/StartGameButton";
 
 export default async function DashboardPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-  });
+  const statsByDifficulty = await getOrCreateAllStats(session.user.id);
 
-  if (!user) redirect("/login");
-
-  const stats = [
-    ["Score", user.score, "text-cyan-300"],
-    ["Streak", user.winStreak, "text-amber-300"],
-    ["W", user.wins, "text-teal-300"],
-    ["L", user.losses, "text-rose-300"],
-    ["D", user.draws, "text-slate-200"],
-  ];
+  const serializable = Object.fromEntries(
+    Object.entries(statsByDifficulty).map(([level, stat]) => [
+      level,
+      {
+        score: stat.score,
+        winStreak: stat.winStreak,
+        wins: stat.wins,
+        losses: stat.losses,
+        draws: stat.draws,
+      },
+    ])
+  );
 
   return (
     <section className="space-y-10">
@@ -28,20 +30,10 @@ export default async function DashboardPage() {
           <h1 className="font-[family-name:var(--font-display)] text-4xl font-bold tracking-tight text-teal-300 sm:text-5xl">
             OX Arena
           </h1>
-          <p className="mt-2 text-slate-300">สวัสดี, {user.name || user.email}</p>
+          <p className="mt-2 text-slate-300">สวัสดี, {session.user.name || session.user.email}</p>
         </div>
 
-        <div className="flex flex-wrap gap-2 sm:justify-end">
-          {stats.map(([label, value, color]) => (
-            <div
-              key={label}
-              className="min-w-[4.25rem] scale-90 rounded-xl border border-slate-700/70 bg-slate-900/50 px-3 py-2 text-center"
-            >
-              <p className="text-[10px] uppercase tracking-widest text-slate-400">{label}</p>
-              <p className={`mt-0.5 text-xl font-semibold ${color}`}>{value}</p>
-            </div>
-          ))}
-        </div>
+        <DashboardStats statsByDifficulty={serializable} />
       </div>
 
       <div className="flex flex-col items-center justify-center gap-8 py-10 text-center">
@@ -56,9 +48,7 @@ export default async function DashboardPage() {
 
         <p className="max-w-sm text-lg text-slate-300">พร้อมวัดฝีมือบนกระดาน XO แล้วหรือยัง?</p>
 
-        <Link href="/game" className="play-cta">
-          เริ่มเล่นเกม
-        </Link>
+        <StartGameButton />
       </div>
     </section>
   );

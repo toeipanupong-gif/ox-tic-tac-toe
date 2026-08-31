@@ -4,10 +4,16 @@ import { useCallback, useEffect, useState, useTransition } from "react";
 import Board from "./Board";
 import ScoreBoard from "./ScoreBoard";
 import { checkWinner } from "@/lib/game/game-engine";
+import { difficultyLabel, normalizeDifficulty } from "@/lib/game/difficulty";
 
 const EMPTY_BOARD = Array(9).fill(null);
 
-export default function GameClient({ initialScore = 0, initialWinStreak = 0 }) {
+export default function GameClient({
+  initialScore = 0,
+  initialWinStreak = 0,
+  difficulty = "NORMAL",
+}) {
+  const level = normalizeDifficulty(difficulty);
   const [board, setBoard] = useState(EMPTY_BOARD);
   const [status, setStatus] = useState("PLAYING");
   const [score, setScore] = useState(initialScore);
@@ -21,7 +27,11 @@ export default function GameClient({ initialScore = 0, initialWinStreak = 0 }) {
     startTransition(async () => {
       setError("");
       setScoreResult(null);
-      const res = await fetch("/api/game/start", { method: "POST" });
+      const res = await fetch("/api/game/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ difficulty: level }),
+      });
       const data = await res.json();
       if (!res.ok) {
         setError(data.error || "เริ่มเกมไม่สำเร็จ");
@@ -33,7 +43,7 @@ export default function GameClient({ initialScore = 0, initialWinStreak = 0 }) {
       setWinStreak(data.winStreak);
       setStarted(true);
     });
-  }, []);
+  }, [level]);
 
   useEffect(() => {
     startGame();
@@ -68,12 +78,15 @@ export default function GameClient({ initialScore = 0, initialWinStreak = 0 }) {
     <div className="space-y-6">
       <ScoreBoard score={score} winStreak={winStreak} status={status} turn="PLAYER" />
 
-      <div className="flex items-center justify-center gap-6 text-sm text-slate-300">
+      <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-slate-300">
         <span>
           คุณ: <strong className="text-cyan-300">X</strong>
         </span>
         <span>
           Bot: <strong className="text-amber-300">O</strong>
+        </span>
+        <span className="rounded-lg border border-teal-500/40 bg-teal-500/10 px-3 py-1 font-semibold text-teal-200">
+          {difficultyLabel(level)}
         </span>
       </div>
 

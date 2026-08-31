@@ -1,3 +1,5 @@
+"use client";
+
 function winRate(wins, losses, draws) {
   const total = wins + losses + draws;
   if (total === 0) return "0.0%";
@@ -22,53 +24,98 @@ function displayName(player, isSelf) {
   return maskName(player.name);
 }
 
-export default function LeaderboardTable({ players, currentUserId = null }) {
+function PlayerRow({ player, rank, isSelf }) {
   return (
-    <div className="overflow-x-auto rounded-2xl border border-slate-700/70">
-      <table className="min-w-full text-left text-sm">
-        <thead className="bg-slate-900/80 text-slate-400">
-          <tr>
-            <th className="px-4 py-3 font-medium">Rank</th>
-            <th className="px-4 py-3 font-medium">Player</th>
-            <th className="px-4 py-3 font-medium">Score</th>
-            <th className="px-4 py-3 font-medium">Wins</th>
-            <th className="px-4 py-3 font-medium">Losses</th>
-            <th className="px-4 py-3 font-medium">Win Rate</th>
-          </tr>
-        </thead>
-        <tbody>
-          {players.map((player, index) => {
-            const isSelf = Boolean(currentUserId && player.id === currentUserId);
-            return (
-              <tr
-                key={player.id}
-                className={`border-t border-slate-800/80 ${isSelf ? "bg-teal-950/30" : ""}`}
-              >
-                <td className="px-4 py-3 text-teal-300">{index + 1}</td>
-                <td className="px-4 py-3">
-                  <span className={isSelf ? "font-semibold text-teal-200" : ""}>
-                    {displayName(player, isSelf)}
-                    {isSelf ? " (คุณ)" : ""}
-                  </span>
-                </td>
-                <td className="px-4 py-3 font-semibold text-cyan-300">{player.score}</td>
-                <td className="px-4 py-3">{player.wins}</td>
-                <td className="px-4 py-3">{player.losses}</td>
-                <td className="px-4 py-3">
-                  {winRate(player.wins, player.losses, player.draws)}
+    <tr
+      className={`border-t border-slate-800/80 ${isSelf ? "bg-teal-950/40 ring-1 ring-inset ring-teal-500/30" : ""}`}
+    >
+      <td className="px-4 py-3 text-teal-300">{rank}</td>
+      <td className="px-4 py-3">
+        <span className={isSelf ? "font-semibold text-teal-200" : ""}>
+          {displayName(player, isSelf)}
+          {isSelf ? " (คุณ)" : ""}
+        </span>
+      </td>
+      <td className="px-4 py-3 font-semibold text-cyan-300">{player.score}</td>
+      <td className="px-4 py-3 text-teal-300">{player.wins}</td>
+      <td className="px-4 py-3 text-rose-300">{player.losses}</td>
+      <td className="px-4 py-3 text-slate-200">{player.draws}</td>
+      <td className="px-4 py-3">
+        {winRate(player.wins, player.losses, player.draws)}
+      </td>
+    </tr>
+  );
+}
+
+function TableHead() {
+  return (
+    <thead className="bg-slate-900/80 text-slate-400">
+      <tr>
+        <th className="px-4 py-3 font-medium">Rank</th>
+        <th className="px-4 py-3 font-medium">Player</th>
+        <th className="px-4 py-3 font-medium">Score</th>
+        <th className="px-4 py-3 font-medium">Wins</th>
+        <th className="px-4 py-3 font-medium">Losses</th>
+        <th className="px-4 py-3 font-medium">Draw</th>
+        <th className="px-4 py-3 font-medium">Win Rate</th>
+      </tr>
+    </thead>
+  );
+}
+
+export default function LeaderboardTable({
+  players,
+  currentUserId = null,
+  selfPlayer = null,
+  selfRank = null,
+  showSelfOutside = false,
+  pageOffset = 0,
+}) {
+  return (
+    <div className="space-y-4">
+      <div className="overflow-x-auto rounded-2xl border border-slate-700/70">
+        <table className="min-w-full text-left text-sm">
+          <TableHead />
+          <tbody>
+            {players.map((player, index) => {
+              const isSelf = Boolean(currentUserId && player.id === currentUserId);
+              return (
+                <PlayerRow
+                  key={player.id}
+                  player={player}
+                  rank={pageOffset + index + 1}
+                  isSelf={isSelf}
+                />
+              );
+            })}
+            {players.length === 0 && (
+              <tr>
+                <td colSpan={7} className="px-4 py-8 text-center text-slate-400">
+                  ยังไม่มีผู้เล่นใน Leaderboard
                 </td>
               </tr>
-            );
-          })}
-          {players.length === 0 && (
-            <tr>
-              <td colSpan={6} className="px-4 py-8 text-center text-slate-400">
-                ยังไม่มีผู้เล่นใน Leaderboard
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {showSelfOutside && selfPlayer && (
+        <div className="space-y-2">
+          <p className="text-sm text-slate-400">อันดับของคุณ (อยู่นอกหน้านี้)</p>
+          <div className="overflow-x-auto rounded-2xl border border-teal-500/40">
+            <table className="min-w-full text-left text-sm">
+              <TableHead />
+              <tbody>
+                <PlayerRow
+                  player={selfPlayer}
+                  rank={selfRank}
+                  isSelf
+                />
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

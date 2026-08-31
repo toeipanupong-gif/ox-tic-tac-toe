@@ -1,12 +1,9 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-
-function winRate(wins, losses, draws) {
-  const total = wins + losses + draws;
-  if (total === 0) return "0.0%";
-  return `${((wins / total) * 100).toFixed(1)}%`;
-}
+import ProfileView from "@/components/profile/ProfileView";
+import { DIFFICULTIES } from "@/lib/game/difficulty";
+import { getOrCreateAllStats } from "@/lib/game/stats";
 
 export default async function ProfilePage() {
   const session = await auth();
@@ -14,88 +11,65 @@ export default async function ProfilePage() {
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      score: true,
-      wins: true,
-      losses: true,
-      draws: true,
-      winStreak: true,
-      games: {
-        orderBy: { createdAt: "desc" },
-        take: 20,
-      },
-    },
+    select: { id: true, name: true, email: true },
   });
 
   if (!user) redirect("/login");
 
+  const [statsByDifficultyRaw, games] = await Promise.all([
+    getOrCreateAllStats(user.id),
+    prisma.game.findMany({
+      where: { userId: user.id },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        difficulty: true,
+        result: true,
+        scoreChange: true,
+        bonusScore: true,
+        winStreak: true,
+        createdAt: true,
+      },
+    }),
+  ]);
+
+  const statsByDifficulty = Object.fromEntries(
+    DIFFICULTIES.map((level) => {
+      const stat = statsByDifficultyRaw[level];
+      return [
+        level,
+        {
+          score: stat.score,
+          wins: stat.wins,
+          losses: stat.losses,
+          draws: stat.draws,
+          winStreak: stat.winStreak,
+        },
+      ];
+    })
+  );
+
+  const gamesByDifficulty = Object.fromEntries(
+    DIFFICULTIES.map((level) => [
+      level,
+      games
+        .filter((g) => g.difficulty === level)
+        .map((g) => ({
+          id: g.id,
+          result: g.result,
+          scoreChange: g.scoreChange,
+          bonusScore: g.bonusScore,
+          winStreak: g.winStreak,
+          createdAt: g.createdAt.toISOString(),
+        })),
+    ])
+  );
+
   return (
-    <section className="space-y-8">
-      <div>
-        <h1 className="font-[family-name:var(--font-display)] text-4xl font-bold text-teal-300">
-          {user.name || "Player"}
-        </h1>
-        <p className="mt-1 text-slate-400">{user.email}</p>
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {[
-          ["Score", user.score],
-          ["Wins", user.wins],
-          ["Losses", user.losses],
-          ["Draws", user.draws],
-          ["Win Rate", winRate(user.wins, user.losses, user.draws)],
-          ["Win Streak", user.winStreak],
-        ].map(([label, value]) => (
-          <div
-            key={label}
-            className="rounded-2xl border border-slate-700/70 bg-slate-900/50 p-4"
-          >
-            <p className="text-xs uppercase tracking-widest text-slate-400">{label}</p>
-            <p className="mt-2 text-2xl font-semibold text-cyan-300">{value}</p>
-          </div>
-        ))}
-      </div>
-
-      <div>
-        <h2 className="mb-3 text-lg font-semibold">Game History</h2>
-        <div className="overflow-x-auto rounded-2xl border border-slate-700/70">
-          <table className="min-w-full text-left text-sm">
-            <thead className="bg-slate-900/80 text-slate-400">
-              <tr>
-                <th className="px-4 py-3">Result</th>
-                <th className="px-4 py-3">Score Δ</th>
-                <th className="px-4 py-3">Bonus</th>
-                <th className="px-4 py-3">Streak</th>
-                <th className="px-4 py-3">When</th>
-              </tr>
-            </thead>
-            <tbody>
-              {user.games.map((game) => (
-                <tr key={game.id} className="border-t border-slate-800/80">
-                  <td className="px-4 py-3">{game.result}</td>
-                  <td className="px-4 py-3">{game.scoreChange}</td>
-                  <td className="px-4 py-3">{game.bonusScore}</td>
-                  <td className="px-4 py-3">{game.winStreak}</td>
-                  <td className="px-4 py-3 text-slate-400">
-                    {new Date(game.createdAt).toLocaleString("th-TH")}
-                  </td>
-                </tr>
-              ))}
-              {user.games.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-slate-400">
-                    ยังไม่มีประวัติเกม
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </section>
+    <ProfileView
+      user={user}
+      statsByDifficulty={statsByDifficulty}
+      gamesByDifficulty={gamesByDifficulty}
+    />
   );
 }

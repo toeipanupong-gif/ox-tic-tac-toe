@@ -13,17 +13,27 @@ model User {
   email         String?     @unique
   emailVerified DateTime?
   role          String      @default("USER")
-  score         Int         @default(0)
-  wins          Int         @default(0)
-  losses        Int         @default(0)
-  draws         Int         @default(0)
-  winStreak     Int         @default(0)
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
   accounts      Account[]
   sessions      Session[]
   games         Game[]
   activeGame    ActiveGame?
+  stats         UserStat[]
+}
+
+model UserStat {
+  id         String @id @default(cuid())
+  userId     String
+  difficulty String @default("NORMAL")
+  score      Int    @default(0)
+  wins       Int    @default(0)
+  losses     Int    @default(0)
+  draws      Int    @default(0)
+  winStreak  Int    @default(0)
+  user       User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, difficulty])
 }
 
 model Account {
@@ -63,6 +73,7 @@ model VerificationToken {
 model Game {
   id          String   @id @default(cuid())
   userId      String
+  difficulty  String   @default("NORMAL")
   result      String
   scoreChange Int
   bonusScore  Int      @default(0)
@@ -76,6 +87,7 @@ model ActiveGame {
   userId       String   @unique
   board        String
   status       String   @default("PLAYING")
+  difficulty   String   @default("NORMAL")
   playerSymbol String   @default("X")
   botSymbol    String   @default("O")
   createdAt    DateTime @default(now())

@@ -1,6 +1,6 @@
 # OX Arena — Tic-Tac-Toe Web App
 
-Next.js web application สำหรับเล่น Tic-Tac-Toe กับ Bot (Minimax) พร้อม Google Login, Score, Leaderboard และ Admin Dashboard
+Next.js web application สำหรับเล่น Tic-Tac-Toe กับ Bot 3 ระดับ (Easy / Normal / Hard) พร้อม Google Login, Score แยกตามระดับ, Leaderboard และ Admin Dashboard
 
 ## Tech Stack
 
@@ -121,10 +121,10 @@ yarn dev
 ## Features
 
 - Login ด้วย Google ก่อนเล่น
-- ผู้เล่น vs Bot (Minimax)
-- คะแนน: ชนะ +1 / แพ้ -1 / เสมอ 0
+- ผู้เล่น vs Bot 3 ระดับ: Easy (สุ่ม) / Normal (Minimax) / Hard (มีโอกาสชนะจะชนะก่อน ไม่ป้องกัน)
+- คะแนนแยกตามระดับ (UserStat): ชนะ +1 / แพ้ -1 / เสมอ 0
 - ชนะติดกัน 3 ครั้ง: Bonus +1 แล้วรีเซ็ต streak
-- Game History, Leaderboard, Admin Dashboard
+- Game History, Leaderboard, Admin Dashboard (กรองตามระดับได้)
 - Server เป็นคนตัดสินคะแนน (Client ส่งแค่ตำแหน่งเดิน)
 - ไม่เก็บรูปโปรไฟล์จาก Google (แสดงชื่อเท่านั้น; Leaderboard mask ชื่อคนอื่น)
 
@@ -134,17 +134,17 @@ yarn dev
 | --- | --- |
 | `/` | Landing (OX Arena) |
 | `/login` | Login ด้วย Google |
-| `/dashboard` | Home / Arena — คะแนน + ปุ่มเริ่มเล่น |
-| `/game` | เล่นเกม OX กับ Bot |
-| `/leaderboard` | อันดับคะแนน (แสดงชื่อเต็มเฉพาะตัวเอง คนอื่นถูก mask) |
-| `/profile` | โปรไฟล์ตัวเอง + ประวัติเกม |
-| `/admin` | Admin เท่านั้น |
+| `/dashboard` | Home — สถิติตามระดับ + เลือกระดับก่อนเริ่มเล่น |
+| `/game` | เล่นเกม OX กับ Bot ตามระดับ |
+| `/leaderboard` | อันดับตามระดับ |
+| `/profile` | โปรไฟล์ + ประวัติตามระดับ |
+| `/admin` | Admin — ดูสถิติ/ประวัติตามระดับ |
 
 ## Security Notes
 
 - ห้าม commit `.env`
 - ห้าม commit `prisma/dev.db`
 - Admin ตรวจจาก `ADMIN_EMAIL` ฝั่ง server เท่านั้น
-- Score คำนวณใน API `/api/game/move` ภายใน transaction
+- Score คำนวณใน API `/api/game/move` ภายใน transaction ต่อระดับ
 - ไม่มีฟิลด์ `image` ใน User schema — ไม่เก็บ/ไม่แสดงรูปโปรไฟล์
 - Leaderboard แสดงชื่อเต็มเฉพาะผู้ใช้ปัจจุบัน คนอื่นถูก mask

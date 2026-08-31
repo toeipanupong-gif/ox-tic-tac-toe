@@ -1,37 +1,40 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import LeaderboardTable from "@/components/leaderboard/LeaderboardTable";
-
-function winRate(wins, losses, draws) {
-  const total = wins + losses + draws;
-  if (total === 0) return 0;
-  return wins / total;
-}
+import LeaderboardView from "@/components/leaderboard/LeaderboardView";
+import { DIFFICULTIES } from "@/lib/game/difficulty";
+import { sortPlayersByRank } from "@/lib/game/stats";
 
 export default async function LeaderboardPage() {
   const session = await auth();
 
-  const players = await prisma.user.findMany({
-    where: { role: "USER" },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      score: true,
-      wins: true,
-      losses: true,
-      draws: true,
+  const stats = await prisma.userStat.findMany({
+    where: {
+      user: { role: "USER" },
     },
-    take: 100,
+    include: {
+      user: {
+        select: { id: true, name: true, email: true, role: true },
+      },
+    },
   });
 
-  players.sort((a, b) => {
-    if (b.score !== a.score) return b.score - a.score;
-    if (b.wins !== a.wins) return b.wins - a.wins;
-    const rateDiff = winRate(b.wins, b.losses, b.draws) - winRate(a.wins, a.losses, a.draws);
-    if (rateDiff !== 0) return rateDiff;
-    return a.name?.localeCompare(b.name || "") || 0;
-  });
+  const rankedByDifficulty = Object.fromEntries(
+    DIFFICULTIES.map((difficulty) => {
+      const levelStats = stats.filter((s) => s.difficulty === difficulty);
+      const ranked = sortPlayersByRank(
+        levelStats.map((s) => ({
+          id: s.user.id,
+          name: s.user.name,
+          email: s.user.email,
+          score: s.score,
+          wins: s.wins,
+          losses: s.losses,
+          draws: s.draws,
+        }))
+      );
+      return [difficulty, ranked];
+    })
+  );
 
   return (
     <section className="space-y-6">
@@ -40,11 +43,12 @@ export default async function LeaderboardPage() {
           Leaderboard
         </h1>
         <p className="mt-2 text-slate-300">
-          เรียงตาม Score → Wins → Win Rate (ไม่รวม Admin) — ชื่อผู้เล่นอื่นถูกปกปิดบางส่วน
+          จัดอันดับคะแนนตามระดับ
         </p>
       </div>
-      <LeaderboardTable
-        players={players}
+
+      <LeaderboardView
+        rankedByDifficulty={rankedByDifficulty}
         currentUserId={session?.user?.id ?? null}
       />
     </section>

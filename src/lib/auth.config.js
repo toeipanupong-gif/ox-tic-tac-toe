@@ -55,11 +55,6 @@ export const authConfig = {
       if (session.user) {
         session.user.id = token.id;
         session.user.role = token.role ?? "USER";
-        session.user.score = token.score ?? 0;
-        session.user.wins = token.wins ?? 0;
-        session.user.losses = token.losses ?? 0;
-        session.user.draws = token.draws ?? 0;
-        session.user.winStreak = token.winStreak ?? 0;
       }
       return session;
     },
