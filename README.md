@@ -126,17 +126,18 @@ yarn dev
 - ชนะติดกัน 3 ครั้ง: Bonus +1 แล้วรีเซ็ต streak
 - Game History, Leaderboard, Admin Dashboard
 - Server เป็นคนตัดสินคะแนน (Client ส่งแค่ตำแหน่งเดิน)
+- ไม่เก็บรูปโปรไฟล์จาก Google (แสดงชื่อเท่านั้น; Leaderboard mask ชื่อคนอื่น)
 
 ## Pages
 
 | Path | Description |
 | --- | --- |
-| `/` | Landing |
-| `/login` | Login |
-| `/dashboard` | สถิติผู้เล่น |
-| `/game` | เล่นเกม |
-| `/leaderboard` | อันดับคะแนน |
-| `/profile` | โปรไฟล์ + ประวัติ |
+| `/` | Landing (OX Arena) |
+| `/login` | Login ด้วย Google |
+| `/dashboard` | Home / Arena — คะแนน + ปุ่มเริ่มเล่น |
+| `/game` | เล่นเกม OX กับ Bot |
+| `/leaderboard` | อันดับคะแนน (แสดงชื่อเต็มเฉพาะตัวเอง คนอื่นถูก mask) |
+| `/profile` | โปรไฟล์ตัวเอง + ประวัติเกม |
 | `/admin` | Admin เท่านั้น |
 
 ## Security Notes
@@ -145,3 +146,5 @@ yarn dev
 - ห้าม commit `prisma/dev.db`
 - Admin ตรวจจาก `ADMIN_EMAIL` ฝั่ง server เท่านั้น
 - Score คำนวณใน API `/api/game/move` ภายใน transaction
+- ไม่มีฟิลด์ `image` ใน User schema — ไม่เก็บ/ไม่แสดงรูปโปรไฟล์
+- Leaderboard แสดงชื่อเต็มเฉพาะผู้ใช้ปัจจุบัน คนอื่นถูก mask

@@ -1,3 +1,4 @@
+import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import LeaderboardTable from "@/components/leaderboard/LeaderboardTable";
 
@@ -8,13 +9,14 @@ function winRate(wins, losses, draws) {
 }
 
 export default async function LeaderboardPage() {
+  const session = await auth();
+
   const players = await prisma.user.findMany({
     where: { role: "USER" },
     select: {
       id: true,
       name: true,
       email: true,
-      image: true,
       score: true,
       wins: true,
       losses: true,
@@ -38,10 +40,13 @@ export default async function LeaderboardPage() {
           Leaderboard
         </h1>
         <p className="mt-2 text-slate-300">
-          เรียงตาม Score → Wins → Win Rate (ไม่รวม Admin)
+          เรียงตาม Score → Wins → Win Rate (ไม่รวม Admin) — ชื่อผู้เล่นอื่นถูกปกปิดบางส่วน
         </p>
       </div>
-      <LeaderboardTable players={players} />
+      <LeaderboardTable
+        players={players}
+        currentUserId={session?.user?.id ?? null}
+      />
     </section>
   );
 }

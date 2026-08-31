@@ -29,13 +29,31 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
   callbacks: {
     ...authConfig.callbacks,
-    async signIn({ user }) {
-      await syncAdminRole(user);
+    // อย่าเรียก Prisma ที่นี่ — Auth.js เรียก signIn ก่อน createUser
+    // ถ้า update พังจะกลายเป็น error=AccessDenied
+    async signIn() {
       return true;
     },
     async jwt({ token, user, trigger }) {
       if (user?.id) {
-        const dbUser = await syncAdminRole(user);
+        let dbUser = null;
+        try {
+          dbUser = await syncAdminRole(user);
+        } catch {
+          // user ใหม่อาจยังไม่พร้อม — อ่านค่าจาก DB ถ้ามี
+          dbUser = await prisma.user.findUnique({
+            where: { id: user.id },
+            select: {
+              id: true,
+              role: true,
+              score: true,
+              wins: true,
+              losses: true,
+              draws: true,
+              winStreak: true,
+            },
+          });
+        }
         token.id = dbUser?.id ?? user.id;
         token.role = dbUser?.role ?? "USER";
         token.score = dbUser?.score ?? 0;
@@ -72,7 +90,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
   events: {
     async createUser({ user }) {
-      await syncAdminRole(user);
+      try {
+        await syncAdminRole(user);
+      } catch (error) {
+        console.error("[auth] createUser syncAdminRole failed", error);
+      }
     },
   },
 });

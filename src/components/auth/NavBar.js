@@ -15,10 +15,7 @@ export default async function NavBar() {
         </Link>
         <nav className="flex flex-wrap items-center gap-3 text-sm text-slate-300">
           <Link href="/dashboard" className="hover:text-teal-300">
-            Dashboard
-          </Link>
-          <Link href="/game" className="hover:text-teal-300">
-            Play
+            Home
           </Link>
           <Link href="/leaderboard" className="hover:text-teal-300">
             Leaderboard

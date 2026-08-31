@@ -9,6 +9,15 @@ export const authConfig = {
     Google({
       clientId: process.env.AUTH_GOOGLE_ID,
       clientSecret: process.env.AUTH_GOOGLE_SECRET,
+      // ไม่รับรูปโปรไฟล์จาก Google (ไม่เก็บใน DB / URL หมดอายุได้)
+      profile(profile) {
+        return {
+          id: profile.sub,
+          name: profile.name,
+          email: profile.email,
+          emailVerified: profile.email_verified ? new Date() : null,
+        };
+      },
     }),
   ],
   pages: {

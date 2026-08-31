@@ -7,13 +7,15 @@
   --accent: #2dd4bf;
   --accent-2: #67e8f9;
   --warn: #fbbf24;
+  --font-body: var(--font-chakra);
+  --font-display: var(--font-chakra);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-body);
-  --font-display: var(--font-display);
+  --font-sans: var(--font-chakra);
+  --font-display: var(--font-chakra);
 }
 
 body {
@@ -23,9 +25,147 @@ body {
     radial-gradient(circle at 15% 20%, rgba(45, 212, 191, 0.16), transparent 35%),
     radial-gradient(circle at 85% 10%, rgba(103, 232, 249, 0.12), transparent 30%),
     linear-gradient(160deg, #041018 0%, #0b1728 45%, #102033 100%);
-  font-family: var(--font-body), sans-serif;
+  font-family: var(--font-chakra), sans-serif;
 }
 
 a {
   text-decoration: none;
+}
+
+@keyframes ox-float-a {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-8deg);
+  }
+  50% {
+    transform: translateY(-18px) rotate(6deg);
+  }
+}
+
+@keyframes ox-float-b {
+  0%,
+  100% {
+    transform: translateY(0) rotate(10deg) scale(1);
+  }
+  50% {
+    transform: translateY(16px) rotate(-6deg) scale(1.06);
+  }
+}
+
+@keyframes ox-float-c {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  33% {
+    transform: translate(10px, -12px) rotate(12deg);
+  }
+  66% {
+    transform: translate(-8px, 8px) rotate(-10deg);
+  }
+}
+
+.ox-float-a {
+  animation: ox-float-a 7s ease-in-out infinite;
+}
+
+.ox-float-b {
+  animation: ox-float-b 9s ease-in-out infinite;
+}
+
+.ox-float-c {
+  animation: ox-float-c 11s ease-in-out infinite;
+}
+
+@keyframes login-nudge {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-2px) scale(1.03);
+  }
+}
+
+.login-btn {
+  cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.login-btn:hover {
+  transform: translateY(-3px) scale(1.04);
+  box-shadow: 0 12px 28px rgba(45, 212, 191, 0.35);
+  animation: login-nudge 0.7s ease-in-out infinite;
+}
+
+.login-btn:active {
+  transform: translateY(0) scale(0.98);
+  animation: none;
+}
+
+@keyframes play-mascot-x {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-12deg);
+  }
+  50% {
+    transform: translateY(-10px) rotate(8deg);
+  }
+}
+
+@keyframes play-mascot-o {
+  0%,
+  100% {
+    transform: translateY(0) rotate(10deg) scale(1);
+  }
+  50% {
+    transform: translateY(8px) rotate(-8deg) scale(1.08);
+  }
+}
+
+@keyframes play-cta-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(45, 212, 191, 0.45);
+  }
+  50% {
+    box-shadow: 0 0 0 14px rgba(45, 212, 191, 0);
+  }
+}
+
+.play-mascot-x {
+  animation: play-mascot-x 2.4s ease-in-out infinite;
+}
+
+.play-mascot-o {
+  animation: play-mascot-o 2.8s ease-in-out infinite;
+}
+
+.play-cta {
+  display: inline-flex;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  border-radius: 1rem;
+  background: #2dd4bf;
+  padding: 1rem 2.5rem;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #020617;
+  transition:
+    transform 0.2s ease,
+    background-color 0.2s ease;
+  animation: play-cta-pulse 2s ease-out infinite;
+}
+
+.play-cta:hover {
+  transform: translateY(-4px) scale(1.06);
+  background: #5eead4;
+}
+
+.play-cta:active {
+  transform: translateY(0) scale(0.98);
 }

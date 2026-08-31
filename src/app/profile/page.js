@@ -14,7 +14,15 @@ export default async function ProfilePage() {
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    include: {
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      score: true,
+      wins: true,
+      losses: true,
+      draws: true,
+      winStreak: true,
       games: {
         orderBy: { createdAt: "desc" },
         take: 20,
@@ -26,19 +34,11 @@ export default async function ProfilePage() {
 
   return (
     <section className="space-y-8">
-      <div className="flex items-center gap-4">
-        {user.image ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={user.image} alt="" className="h-16 w-16 rounded-full" />
-        ) : (
-          <div className="h-16 w-16 rounded-full bg-slate-700" />
-        )}
-        <div>
-          <h1 className="font-[family-name:var(--font-display)] text-4xl font-bold text-teal-300">
-            {user.name || "Player"}
-          </h1>
-          <p className="text-slate-400">{user.email}</p>
-        </div>
+      <div>
+        <h1 className="font-[family-name:var(--font-display)] text-4xl font-bold text-teal-300">
+          {user.name || "Player"}
+        </h1>
+        <p className="mt-1 text-slate-400">{user.email}</p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

@@ -4,7 +4,25 @@ function winRate(wins, losses, draws) {
   return `${((wins / total) * 100).toFixed(1)}%`;
 }
 
-export default function LeaderboardTable({ players }) {
+function maskName(name) {
+  if (!name?.trim()) return "Player";
+  return name
+    .trim()
+    .split(/\s+/)
+    .map((word) => {
+      if (word.length <= 1) return "*";
+      return `${word[0]}${"*".repeat(Math.min(3, word.length - 1))}`;
+    })
+    .join(" ");
+}
+
+function displayName(player, isSelf) {
+  if (isSelf) return player.name || player.email || "Player";
+  if (!player.name) return "Player";
+  return maskName(player.name);
+}
+
+export default function LeaderboardTable({ players, currentUserId = null }) {
   return (
     <div className="overflow-x-auto rounded-2xl border border-slate-700/70">
       <table className="min-w-full text-left text-sm">
@@ -19,32 +37,29 @@ export default function LeaderboardTable({ players }) {
           </tr>
         </thead>
         <tbody>
-          {players.map((player, index) => (
-            <tr key={player.id} className="border-t border-slate-800/80">
-              <td className="px-4 py-3 text-teal-300">{index + 1}</td>
-              <td className="px-4 py-3">
-                <div className="flex items-center gap-3">
-                  {player.image ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={player.image}
-                      alt=""
-                      className="h-8 w-8 rounded-full"
-                    />
-                  ) : (
-                    <div className="h-8 w-8 rounded-full bg-slate-700" />
-                  )}
-                  <span>{player.name || player.email}</span>
-                </div>
-              </td>
-              <td className="px-4 py-3 font-semibold text-cyan-300">{player.score}</td>
-              <td className="px-4 py-3">{player.wins}</td>
-              <td className="px-4 py-3">{player.losses}</td>
-              <td className="px-4 py-3">
-                {winRate(player.wins, player.losses, player.draws)}
-              </td>
-            </tr>
-          ))}
+          {players.map((player, index) => {
+            const isSelf = Boolean(currentUserId && player.id === currentUserId);
+            return (
+              <tr
+                key={player.id}
+                className={`border-t border-slate-800/80 ${isSelf ? "bg-teal-950/30" : ""}`}
+              >
+                <td className="px-4 py-3 text-teal-300">{index + 1}</td>
+                <td className="px-4 py-3">
+                  <span className={isSelf ? "font-semibold text-teal-200" : ""}>
+                    {displayName(player, isSelf)}
+                    {isSelf ? " (คุณ)" : ""}
+                  </span>
+                </td>
+                <td className="px-4 py-3 font-semibold text-cyan-300">{player.score}</td>
+                <td className="px-4 py-3">{player.wins}</td>
+                <td className="px-4 py-3">{player.losses}</td>
+                <td className="px-4 py-3">
+                  {winRate(player.wins, player.losses, player.draws)}
+                </td>
+              </tr>
+            );
+          })}
           {players.length === 0 && (
             <tr>
               <td colSpan={6} className="px-4 py-8 text-center text-slate-400">

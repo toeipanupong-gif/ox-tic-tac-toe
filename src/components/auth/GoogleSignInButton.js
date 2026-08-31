@@ -10,7 +10,7 @@ export default function GoogleSignInButton() {
     >
       <button
         type="submit"
-        className="inline-flex w-full items-center justify-center gap-3 rounded-xl bg-teal-400 px-6 py-3 text-base font-semibold text-slate-950 transition hover:bg-teal-300"
+        className="login-btn inline-flex w-full items-center justify-center gap-3 rounded-xl bg-teal-400 px-6 py-3 text-base font-semibold text-slate-950 hover:bg-teal-300"
       >
         Continue with Google
       </button>

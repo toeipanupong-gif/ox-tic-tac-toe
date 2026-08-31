@@ -12,7 +12,6 @@ model User {
   name          String?
   email         String?     @unique
   emailVerified DateTime?
-  image         String?
   role          String      @default("USER")
   score         Int         @default(0)
   wins          Int         @default(0)
