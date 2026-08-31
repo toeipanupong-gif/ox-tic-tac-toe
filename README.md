@@ -57,10 +57,26 @@ AUTH_GOOGLE_ID="your-client-id"
 AUTH_GOOGLE_SECRET="your-client-secret"
 ```
 
-8. สร้าง `AUTH_SECRET`:
+8. สร้าง `AUTH_SECRET` (เลือกอย่างใดอย่างหนึ่ง):
 
+**macOS / Linux**
 ```bash
 openssl rand -base64 32
+```
+
+**Windows PowerShell** (ไม่มี openssl)
+```powershell
+[Convert]::ToBase64String((1..32 | ForEach-Object { Get-Random -Maximum 256 }) -as [byte[]])
+```
+
+**Node.js** (ใช้ได้ทุก OS ถ้ามี Node อยู่แล้ว)
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+```
+
+นำค่าที่ได้ไปใส่ใน `.env`:
+```env
+AUTH_SECRET="ค่าที่ได้จากคำสั่ง"
 ```
 
 9. กำหนด Admin email:
