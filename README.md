@@ -115,8 +115,16 @@ yarn dev
 | `npm run build` / `yarn build` | build production |
 | `npm run start` / `yarn start` | รัน production server |
 | `npm test` / `yarn test` | unit tests (Vitest) |
+| `npm run playwright:install` / `yarn playwright:install` | ดาวน์โหลด Chromium สำหรับ e2e (รันครั้งแรกครั้งเดียว) |
 | `npm run test:e2e` / `yarn test:e2e` | e2e tests (Playwright) |
 | `npm run db:migrate` / `yarn db:migrate` | Prisma migrate |
+
+> ก่อนรัน `test:e2e` ครั้งแรก ให้ติดตั้ง browser ก่อน:
+> ```bash
+> yarn playwright:install
+> # หรือ
+> yarn playwright install chromium
+> ```
 
 ## Features
 

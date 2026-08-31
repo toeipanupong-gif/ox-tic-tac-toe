@@ -10,6 +10,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "node scripts/run.mjs playwright test",
+    "playwright:install": "playwright install chromium",
     "db:migrate": "node scripts/run.mjs prisma migrate dev",
     "db:push": "node scripts/run.mjs prisma db push",
     "postinstall": "node scripts/run.mjs prisma generate"
