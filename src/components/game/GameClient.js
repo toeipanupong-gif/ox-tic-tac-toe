@@ -1,12 +1,21 @@
 "use client";
 
-import { useCallback, useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import Board from "./Board";
 import ScoreBoard from "./ScoreBoard";
+import ResultOverlay from "./ResultOverlay";
 import { checkWinner } from "@/lib/game/game-engine";
 import { difficultyLabel, normalizeDifficulty } from "@/lib/game/difficulty";
 
 const EMPTY_BOARD = Array(9).fill(null);
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function botThinkDelay() {
+  return 650 + Math.floor(Math.random() * 450);
+}
 
 export default function GameClient({
   initialScore = 0,
@@ -21,12 +30,19 @@ export default function GameClient({
   const [scoreResult, setScoreResult] = useState(null);
   const [error, setError] = useState("");
   const [started, setStarted] = useState(false);
+  const [botThinking, setBotThinking] = useState(false);
+  const [lastMoveIndex, setLastMoveIndex] = useState(null);
+  const [showResult, setShowResult] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const boardBeforeMove = useRef(EMPTY_BOARD);
 
   const startGame = useCallback(() => {
     startTransition(async () => {
       setError("");
       setScoreResult(null);
+      setShowResult(false);
+      setBotThinking(false);
+      setLastMoveIndex(null);
       const res = await fetch("/api/game/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -38,6 +54,7 @@ export default function GameClient({
         return;
       }
       setBoard(data.board);
+      boardBeforeMove.current = data.board;
       setStatus(data.status);
       setScore(data.score);
       setWinStreak(data.winStreak);
@@ -50,10 +67,18 @@ export default function GameClient({
   }, [startGame]);
 
   function handleCellClick(position) {
-    if (status !== "PLAYING" || isPending) return;
+    if (status !== "PLAYING" || isPending || botThinking) return;
+    if (board[position]) return;
+
+    boardBeforeMove.current = board;
+    const optimistic = board.map((cell, i) =>
+      i === position ? "X" : cell
+    );
+    setBoard(optimistic);
+    setLastMoveIndex(position);
+    setError("");
 
     startTransition(async () => {
-      setError("");
       const res = await fetch("/api/game/move", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -61,22 +86,51 @@ export default function GameClient({
       });
       const data = await res.json();
       if (!res.ok) {
+        setBoard(boardBeforeMove.current);
+        setLastMoveIndex(null);
+        setBotThinking(false);
         setError(data.error || "เดินหมากไม่สำเร็จ");
         return;
       }
-      setBoard(data.board);
+
+      const hasBotMove =
+        data.botPosition !== null && data.botPosition !== undefined;
+
+      if (hasBotMove) {
+        setBotThinking(true);
+        await sleep(botThinkDelay());
+        setBoard(data.board);
+        setLastMoveIndex(data.botPosition);
+        setBotThinking(false);
+      } else {
+        setBoard(data.board);
+      }
+
       setStatus(data.status);
       setScore(data.score);
       setWinStreak(data.winStreak);
       setScoreResult(data.scoreResult);
+      boardBeforeMove.current = data.board;
+
+      if (data.status !== "PLAYING") {
+        await sleep(380);
+        setShowResult(true);
+      }
     });
   }
 
   const winningLine = checkWinner(board)?.line ?? [];
+  const boardLocked = status !== "PLAYING" || isPending || botThinking;
 
   return (
-    <div className="space-y-6">
-      <ScoreBoard score={score} winStreak={winStreak} status={status} turn="PLAYER" />
+    <div className="relative space-y-6">
+      <ScoreBoard
+        score={score}
+        winStreak={winStreak}
+        status={status}
+        turn="PLAYER"
+        botThinking={botThinking}
+      />
 
       <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-slate-300">
         <span>
@@ -90,24 +144,34 @@ export default function GameClient({
         </span>
       </div>
 
-      {started ? (
-        <Board
-          board={board}
-          onCellClick={handleCellClick}
-          disabled={status !== "PLAYING" || isPending}
-          winningLine={winningLine}
-        />
-      ) : (
-        <div className="flex h-64 items-center justify-center text-slate-400">กำลังเริ่มเกม...</div>
-      )}
+      <div className="relative">
+        {started ? (
+          <Board
+            board={board}
+            onCellClick={handleCellClick}
+            disabled={boardLocked}
+            winningLine={winningLine}
+            lastMoveIndex={lastMoveIndex}
+          />
+        ) : (
+          <div className="flex h-64 items-center justify-center text-slate-400">
+            กำลังเริ่มเกม...
+          </div>
+        )}
 
-      {scoreResult && (
-        <div className="rounded-2xl border border-teal-500/30 bg-teal-500/10 px-4 py-3 text-center text-teal-100">
-          คะแนน {scoreResult.nextScoreDelta >= 0 ? "+" : ""}
-          {scoreResult.nextScoreDelta}
-          {scoreResult.bonusScore > 0 ? ` (รวม Bonus +${scoreResult.bonusScore})` : ""}
-        </div>
-      )}
+        {botThinking && (
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <div className="bot-thinking-badge flex items-center gap-2 rounded-2xl border border-amber-400/40 bg-slate-950/85 px-4 py-2 text-sm font-semibold text-amber-200 shadow-lg backdrop-blur-sm">
+              <span className="bot-thinking-dots" aria-hidden>
+                <i />
+                <i />
+                <i />
+              </span>
+              Bot กำลังคิด...
+            </div>
+          </div>
+        )}
+      </div>
 
       {error && (
         <p className="text-center text-sm text-rose-300">{error}</p>
@@ -117,12 +181,20 @@ export default function GameClient({
         <button
           type="button"
           onClick={startGame}
-          disabled={isPending}
-          className="rounded-xl bg-teal-500 px-6 py-3 font-semibold text-slate-950 transition hover:bg-teal-400 disabled:opacity-60"
+          disabled={isPending || botThinking}
+          className="cursor-pointer rounded-xl bg-teal-500 px-6 py-3 font-semibold text-slate-950 transition hover:bg-teal-400 disabled:opacity-60"
         >
           เกมใหม่
         </button>
       </div>
+
+      {showResult && (
+        <ResultOverlay
+          status={status}
+          scoreResult={scoreResult}
+          onClose={() => setShowResult(false)}
+        />
+      )}
     </div>
   );
 }

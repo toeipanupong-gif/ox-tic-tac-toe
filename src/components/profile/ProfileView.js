@@ -5,6 +5,7 @@ import DifficultyDropdown, {
   useStoredDifficulty,
 } from "@/components/ui/DifficultyDropdown";
 import { DEFAULT_DIFFICULTY } from "@/lib/game/difficulty";
+import { totalBonus } from "@/lib/game/score";
 
 const PAGE_SIZE = 10;
 
@@ -22,11 +23,12 @@ const RESULT_STYLE = {
 
 const STAT_CARDS = [
   { key: "score", label: "Score", color: "border-cyan-500/40 bg-cyan-500/10", valueClass: "text-cyan-300" },
+  { key: "bonus", label: "Bonus", color: "border-violet-500/40 bg-violet-500/10", valueClass: "text-violet-300" },
   { key: "wins", label: "Wins", color: "border-teal-500/40 bg-teal-500/10", valueClass: "text-teal-300" },
   { key: "losses", label: "Losses", color: "border-rose-500/40 bg-rose-500/10", valueClass: "text-rose-300" },
   { key: "draws", label: "Draws", color: "border-slate-500/40 bg-slate-500/10", valueClass: "text-slate-200" },
   { key: "winRate", label: "Win Rate", color: "border-amber-500/40 bg-amber-500/10", valueClass: "text-amber-300" },
-  { key: "winStreak", label: "Win Streak", color: "border-violet-500/40 bg-violet-500/10", valueClass: "text-violet-300" },
+  { key: "winStreak", label: "Win Streak", color: "border-fuchsia-500/40 bg-fuchsia-500/10", valueClass: "text-fuchsia-300" },
 ];
 
 export default function ProfileView({
@@ -70,6 +72,7 @@ export default function ProfileView({
 
   const values = {
     score: stat.score,
+    bonus: totalBonus(stat.score, stat.wins, stat.losses),
     wins: stat.wins,
     losses: stat.losses,
     draws: stat.draws,

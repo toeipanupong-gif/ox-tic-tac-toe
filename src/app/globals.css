@@ -18,14 +18,31 @@
   --font-display: var(--font-chakra);
 }
 
+html {
+  min-height: 100%;
+  background-color: #041018;
+}
+
 body {
+  position: relative;
   min-height: 100vh;
+  min-height: 100dvh;
   color: var(--foreground);
+  background: transparent;
+  font-family: var(--font-chakra), sans-serif;
+}
+
+/* fixed layer — หน้ายาว scroll แล้วพื้นหลังไม่ขาดช่วง */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
   background:
     radial-gradient(circle at 15% 20%, rgba(45, 212, 191, 0.16), transparent 35%),
     radial-gradient(circle at 85% 10%, rgba(103, 232, 249, 0.12), transparent 30%),
     linear-gradient(160deg, #041018 0%, #0b1728 45%, #102033 100%);
-  font-family: var(--font-chakra), sans-serif;
 }
 
 a {
@@ -168,4 +185,190 @@ a {
 
 .play-cta:active {
   transform: translateY(0) scale(0.98);
+}
+
+@keyframes mark-pop {
+  0% {
+    transform: scale(0.2) rotate(-12deg);
+    opacity: 0;
+  }
+  55% {
+    transform: scale(1.18) rotate(4deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+.mark-pop-active {
+  animation: mark-pop 0.38s cubic-bezier(0.22, 1.2, 0.36, 1) both;
+}
+
+@keyframes cell-win-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(45, 212, 191, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 18px 2px rgba(45, 212, 191, 0.45);
+  }
+}
+
+.cell-win-glow {
+  animation: cell-win-glow 1.1s ease-in-out infinite;
+}
+
+@keyframes bot-dot {
+  0%,
+  80%,
+  100% {
+    opacity: 0.25;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
+.bot-thinking-dots {
+  display: inline-flex;
+  gap: 3px;
+}
+
+.bot-thinking-dots i {
+  display: block;
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: #fbbf24;
+  animation: bot-dot 1s ease-in-out infinite;
+}
+
+.bot-thinking-dots i:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.bot-thinking-dots i:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes bot-thinking-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+.bot-thinking-label {
+  animation: bot-thinking-pulse 1s ease-in-out infinite;
+}
+
+.bot-thinking-badge {
+  animation: bot-thinking-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes result-backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes result-win-in {
+  0% {
+    transform: scale(0.4) rotate(-8deg);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.08) rotate(2deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+@keyframes result-loss-in {
+  0% {
+    transform: translateY(-24px) scale(0.85);
+    opacity: 0;
+  }
+  40% {
+    transform: translateX(-10px) scale(1.02);
+    opacity: 1;
+  }
+  55% {
+    transform: translateX(10px);
+  }
+  70% {
+    transform: translateX(-6px);
+  }
+  100% {
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes result-draw-in {
+  0% {
+    transform: scale(0.7);
+    opacity: 0;
+    filter: blur(6px);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+.result-overlay-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(2, 6, 23, 0.72);
+  backdrop-filter: blur(4px);
+  animation: result-backdrop-in 0.25s ease-out both;
+  padding: 1.5rem;
+}
+
+.result-overlay-card {
+  width: min(100%, 22rem);
+  border-radius: 1.5rem;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: linear-gradient(160deg, rgba(15, 23, 42, 0.96), rgba(8, 15, 28, 0.98));
+  padding: 2rem 1.5rem;
+  text-align: center;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+}
+
+.result-overlay-win {
+  border-color: rgba(45, 212, 191, 0.55);
+  box-shadow:
+    0 0 0 1px rgba(45, 212, 191, 0.2),
+    0 24px 60px rgba(45, 212, 191, 0.18);
+  animation: result-win-in 0.55s cubic-bezier(0.22, 1.2, 0.36, 1) both;
+}
+
+.result-overlay-loss {
+  border-color: rgba(251, 113, 133, 0.5);
+  box-shadow:
+    0 0 0 1px rgba(251, 113, 133, 0.18),
+    0 24px 60px rgba(244, 63, 94, 0.16);
+  animation: result-loss-in 0.6s ease-out both;
+}
+
+.result-overlay-draw {
+  border-color: rgba(148, 163, 184, 0.45);
+  animation: result-draw-in 0.45s ease-out both;
 }

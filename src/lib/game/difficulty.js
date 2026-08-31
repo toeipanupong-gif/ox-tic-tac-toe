@@ -8,7 +8,7 @@ export const DIFFICULTY_LABELS = {
 
 export const DEFAULT_DIFFICULTY = "NORMAL";
 
-/** Shared across /dashboard, /leaderboard, /profile */
+/** Shared across /dashboard, /leaderboard, /profile, /admin */
 export const DIFFICULTY_STORAGE_KEY = "ox-difficulty";
 const LEGACY_DIFFICULTY_STORAGE_KEY = "ox-dashboard-difficulty";
 

@@ -39,3 +39,8 @@ export function calculateScore(result, currentStreak = 0) {
     nextScoreDelta: 0,
   };
 }
+
+/** Bonus รวมจากสูตร score = wins - losses + bonus */
+export function totalBonus(score = 0, wins = 0, losses = 0) {
+  return Math.max(0, Number(score) - Number(wins) + Number(losses));
+}

@@ -2,51 +2,15 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import {
-  DIFFICULTIES,
-  DIFFICULTY_LABELS,
-  DEFAULT_DIFFICULTY,
-  readStoredDifficulty,
-  writeStoredDifficulty,
-} from "@/lib/game/difficulty";
 
-const LEVEL_STYLE = {
-  EASY: {
-    accent: "text-emerald-300",
-    active: "bg-emerald-500/15 text-emerald-200 ring-1 ring-emerald-400/40",
-  },
-  NORMAL: {
-    accent: "text-teal-300",
-    active: "bg-teal-500/15 text-teal-200 ring-1 ring-teal-400/40",
-  },
-  HARD: {
-    accent: "text-amber-300",
-    active: "bg-amber-500/15 text-amber-200 ring-1 ring-amber-400/40",
-  },
-};
+const MENU_MIN_WIDTH = 160;
 
-const MENU_WIDTH = 176; // w-44
-
-export function useStoredDifficulty() {
-  const [difficulty, setDifficulty] = useState(DEFAULT_DIFFICULTY);
-
-  useEffect(() => {
-    setDifficulty(readStoredDifficulty());
-  }, []);
-
-  function selectDifficulty(level) {
-    const next = writeStoredDifficulty(level);
-    setDifficulty(next);
-    return next;
-  }
-
-  return [difficulty, selectDifficulty];
-}
-
-export default function DifficultyDropdown({
+export default function SelectDropdown({
   value,
   onChange,
+  options = [],
   className = "",
+  menuWidth = MENU_MIN_WIDTH,
 }) {
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -54,7 +18,8 @@ export default function DifficultyDropdown({
   const rootRef = useRef(null);
   const buttonRef = useRef(null);
   const menuRef = useRef(null);
-  const currentStyle = LEVEL_STYLE[value] || LEVEL_STYLE.NORMAL;
+
+  const selected = options.find((opt) => opt.value === value) || options[0];
 
   useEffect(() => {
     setMounted(true);
@@ -64,11 +29,13 @@ export default function DifficultyDropdown({
     const btn = buttonRef.current;
     if (!btn) return;
     const rect = btn.getBoundingClientRect();
-    let left = rect.right - MENU_WIDTH;
-    left = Math.max(8, Math.min(left, window.innerWidth - MENU_WIDTH - 8));
+    const width = Math.max(menuWidth, rect.width);
+    let left = rect.left;
+    left = Math.max(8, Math.min(left, window.innerWidth - width - 8));
     setMenuPos({
       top: rect.bottom + 6,
       left,
+      width,
     });
   }
 
@@ -84,7 +51,7 @@ export default function DifficultyDropdown({
       window.removeEventListener("resize", updateMenuPosition);
       window.removeEventListener("scroll", updateMenuPosition, true);
     };
-  }, [open]);
+  }, [open, menuWidth]);
 
   useEffect(() => {
     if (!open) return;
@@ -100,8 +67,8 @@ export default function DifficultyDropdown({
     return () => document.removeEventListener("pointerdown", onPointerDown);
   }, [open]);
 
-  function selectLevel(level) {
-    onChange?.(level);
+  function selectOption(next) {
+    onChange?.(next);
     setOpen(false);
   }
 
@@ -117,30 +84,27 @@ export default function DifficultyDropdown({
           position: "fixed",
           top: menuPos.top,
           left: menuPos.left,
-          width: MENU_WIDTH,
+          width: menuPos.width,
           zIndex: 80,
         }}
         className="overflow-hidden rounded-2xl border border-slate-700/80 bg-slate-950/95 p-1.5 shadow-2xl shadow-black/40 backdrop-blur"
       >
-        {DIFFICULTIES.map((level) => {
-          const style = LEVEL_STYLE[level];
-          const selected = level === value;
+        {options.map((opt) => {
+          const isSelected = opt.value === value;
           return (
             <button
-              key={level}
+              key={opt.value}
               type="button"
               role="option"
-              aria-selected={selected}
-              onClick={() => selectLevel(level)}
+              aria-selected={isSelected}
+              onClick={() => selectOption(opt.value)}
               className={`flex w-full cursor-pointer items-center rounded-xl px-3 py-2.5 text-left transition ${
-                selected
-                  ? style.active
+                isSelected
+                  ? "bg-teal-500/15 text-teal-200 ring-1 ring-teal-400/40"
                   : "text-slate-200 hover:bg-slate-800/80"
               }`}
             >
-              <span className={`text-sm font-semibold ${selected ? "" : style.accent}`}>
-                {DIFFICULTY_LABELS[level]}
-              </span>
+              <span className="text-sm font-semibold">{opt.label}</span>
             </button>
           );
         })}
@@ -149,26 +113,22 @@ export default function DifficultyDropdown({
     );
 
   return (
-    <div ref={rootRef} className={`relative z-30 flex items-stretch gap-2 ${className}`}>
-      <span className="flex items-center text-[10px] uppercase tracking-widest text-slate-400">
-        ระดับ
-      </span>
-
+    <div ref={rootRef} className={`relative z-20 ${className}`}>
       <button
         ref={buttonRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className={`flex min-w-[7.5rem] cursor-pointer items-center justify-between gap-2 rounded-xl border border-slate-700/70 bg-slate-900/50 px-3 py-2 text-left transition hover:border-teal-500/50 ${currentStyle.accent}`}
+        className="flex min-w-[7.5rem] cursor-pointer items-center justify-between gap-2 rounded-xl border border-slate-700/70 bg-slate-900/50 px-3 py-2 text-left text-slate-100 transition hover:border-teal-500/50"
       >
-        <span className="text-sm font-semibold leading-tight">
-          {DIFFICULTY_LABELS[value]}
+        <span className="text-sm font-semibold leading-tight text-teal-200">
+          {selected?.label ?? "เลือก"}
         </span>
         <svg
           viewBox="0 0 20 20"
           fill="currentColor"
-          className={`h-4 w-4 shrink-0 opacity-70 transition ${open ? "rotate-180" : ""}`}
+          className={`h-4 w-4 shrink-0 text-slate-400 opacity-70 transition ${open ? "rotate-180" : ""}`}
           aria-hidden
         >
           <path
@@ -178,7 +138,6 @@ export default function DifficultyDropdown({
           />
         </svg>
       </button>
-
       {menu}
     </div>
   );

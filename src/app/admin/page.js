@@ -2,19 +2,15 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import AdminPanel from "@/components/admin/AdminPanel";
-import DifficultyTabs from "@/components/ui/DifficultyTabs";
-import { normalizeDifficulty } from "@/lib/game/difficulty";
+import { DIFFICULTIES } from "@/lib/game/difficulty";
 
-export default async function AdminPage({ searchParams }) {
+export default async function AdminPage() {
   const session = await auth();
   if (!session?.user?.id || session.user.role !== "ADMIN") {
     redirect("/dashboard");
   }
 
-  const params = await searchParams;
-  const difficulty = normalizeDifficulty(params?.difficulty);
-
-  const [users, totalGames, totalPlayers, stats] = await Promise.all([
+  const [users, totalPlayers, stats, games] = await Promise.all([
     prisma.user.findMany({
       orderBy: { createdAt: "desc" },
       select: {
@@ -24,40 +20,75 @@ export default async function AdminPage({ searchParams }) {
         role: true,
       },
     }),
-    prisma.game.count({ where: { difficulty } }),
     prisma.user.count(),
     prisma.userStat.findMany({
-      where: { difficulty },
+      select: {
+        userId: true,
+        difficulty: true,
+        score: true,
+        wins: true,
+        losses: true,
+        draws: true,
+        winStreak: true,
+      },
+    }),
+    prisma.game.findMany({
+      orderBy: { createdAt: "desc" },
       include: {
-        user: { select: { id: true, name: true, email: true, role: true } },
+        user: { select: { name: true, email: true } },
       },
     }),
   ]);
 
-  const statByUser = Object.fromEntries(stats.map((s) => [s.userId, s]));
+  const usersByDifficulty = Object.fromEntries(
+    DIFFICULTIES.map((difficulty) => {
+      const statByUser = Object.fromEntries(
+        stats
+          .filter((s) => s.difficulty === difficulty)
+          .map((s) => [s.userId, s])
+      );
 
-  const usersWithStats = users
-    .map((user) => {
-      const s = statByUser[user.id];
-      return {
-        ...user,
-        score: s?.score ?? 0,
-        wins: s?.wins ?? 0,
-        losses: s?.losses ?? 0,
-        draws: s?.draws ?? 0,
-        winStreak: s?.winStreak ?? 0,
-      };
+      const usersWithStats = users
+        .map((user) => {
+          const s = statByUser[user.id];
+          return {
+            ...user,
+            score: s?.score ?? 0,
+            wins: s?.wins ?? 0,
+            losses: s?.losses ?? 0,
+            draws: s?.draws ?? 0,
+            winStreak: s?.winStreak ?? 0,
+          };
+        })
+        .sort((a, b) => b.score - a.score || b.wins - a.wins);
+
+      return [difficulty, usersWithStats];
     })
-    .sort((a, b) => b.score - a.score || b.wins - a.wins);
+  );
 
-  const recentGames = await prisma.game.findMany({
-    where: { difficulty },
-    orderBy: { createdAt: "desc" },
-    take: 50,
-    include: {
-      user: { select: { name: true, email: true } },
-    },
-  });
+  const gamesByDifficulty = Object.fromEntries(
+    DIFFICULTIES.map((difficulty) => [
+      difficulty,
+      games
+        .filter((g) => g.difficulty === difficulty)
+        .map((g) => ({
+          id: g.id,
+          result: g.result,
+          scoreChange: g.scoreChange,
+          bonusScore: g.bonusScore,
+          winStreak: g.winStreak,
+          createdAt: g.createdAt.toISOString(),
+          user: g.user,
+        })),
+    ])
+  );
+
+  const totalGamesByDifficulty = Object.fromEntries(
+    DIFFICULTIES.map((difficulty) => [
+      difficulty,
+      gamesByDifficulty[difficulty].length,
+    ])
+  );
 
   return (
     <section className="space-y-6">
@@ -68,14 +99,11 @@ export default async function AdminPage({ searchParams }) {
         <p className="mt-2 text-slate-300">ตรวจสอบผู้เล่น คะแนน และประวัติเกมตามระดับ Bot</p>
       </div>
 
-      <DifficultyTabs current={difficulty} basePath="/admin" />
-
       <AdminPanel
-        users={usersWithStats}
-        totalGames={totalGames}
+        usersByDifficulty={usersByDifficulty}
+        totalGamesByDifficulty={totalGamesByDifficulty}
         totalPlayers={totalPlayers}
-        recentGames={recentGames}
-        difficulty={difficulty}
+        gamesByDifficulty={gamesByDifficulty}
       />
     </section>
   );

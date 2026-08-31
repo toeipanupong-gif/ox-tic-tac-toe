@@ -39,14 +39,14 @@ export default async function DashboardPage() {
       <div className="flex flex-col items-center justify-center gap-8 py-10 text-center">
         <div className="play-mascot relative flex h-48 w-64 items-center justify-center" aria-hidden>
           <span className="play-mascot-x absolute left-0 top-0 font-[family-name:var(--font-display)] text-9xl font-extrabold text-teal-400">
-            X
+            O
           </span>
           <span className="play-mascot-o absolute bottom-0 right-0 font-[family-name:var(--font-display)] text-9xl font-extrabold text-cyan-300">
-            O
+            X
           </span>
         </div>
 
-        <p className="max-w-sm text-lg text-slate-300">พร้อมวัดฝีมือบนกระดาน XO แล้วหรือยัง?</p>
+        <p className="max-w-sm text-lg text-slate-300">พร้อมวัดฝีมือบนกระดาน OX แล้วหรือยัง?</p>
 
         <StartGameButton />
       </div>

@@ -4,9 +4,11 @@ import DifficultyDropdown, {
   useStoredDifficulty,
 } from "@/components/ui/DifficultyDropdown";
 import { DEFAULT_DIFFICULTY } from "@/lib/game/difficulty";
+import { totalBonus } from "@/lib/game/score";
 
 const STAT_META = [
   ["Score", "score", "text-cyan-300"],
+  ["Bonus", "bonus", "text-violet-300"],
   ["Streak", "winStreak", "text-amber-300"],
   ["W", "wins", "text-teal-300"],
   ["L", "losses", "text-rose-300"],
@@ -18,6 +20,15 @@ export default function DashboardStats({ statsByDifficulty }) {
 
   const userStat =
     statsByDifficulty[difficulty] || statsByDifficulty[DEFAULT_DIFFICULTY];
+
+  const values = {
+    score: userStat?.score ?? 0,
+    bonus: totalBonus(userStat?.score, userStat?.wins, userStat?.losses),
+    winStreak: userStat?.winStreak ?? 0,
+    wins: userStat?.wins ?? 0,
+    losses: userStat?.losses ?? 0,
+    draws: userStat?.draws ?? 0,
+  };
 
   return (
     <div className="flex flex-wrap items-stretch gap-2 sm:justify-end">
@@ -32,7 +43,7 @@ export default function DashboardStats({ statsByDifficulty }) {
             {label}
           </p>
           <p className={`mt-0.5 text-xl font-semibold ${color}`}>
-            {userStat?.[key] ?? 0}
+            {values[key]}
           </p>
         </div>
       ))}

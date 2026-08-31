@@ -43,8 +43,10 @@ export default function LeaderboardView({
   }
 
   return (
-    <div className="space-y-6">
-      <DifficultyDropdown value={difficulty} onChange={onSelectDifficulty} />
+    <div className="space-y-6 overflow-visible">
+      <div className="relative z-30 flex justify-end overflow-visible">
+        <DifficultyDropdown value={difficulty} onChange={onSelectDifficulty} />
+      </div>
 
       <LeaderboardTable
         players={pagePlayers}

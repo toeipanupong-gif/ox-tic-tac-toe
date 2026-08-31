@@ -1,5 +1,7 @@
 "use client";
 
+import { totalBonus } from "@/lib/game/score";
+
 function winRate(wins, losses, draws) {
   const total = wins + losses + draws;
   if (total === 0) return "0.0%";
@@ -37,6 +39,9 @@ function PlayerRow({ player, rank, isSelf }) {
         </span>
       </td>
       <td className="px-4 py-3 font-semibold text-cyan-300">{player.score}</td>
+      <td className="px-4 py-3 text-violet-300">
+        {totalBonus(player.score, player.wins, player.losses)}
+      </td>
       <td className="px-4 py-3 text-teal-300">{player.wins}</td>
       <td className="px-4 py-3 text-rose-300">{player.losses}</td>
       <td className="px-4 py-3 text-slate-200">{player.draws}</td>
@@ -54,6 +59,7 @@ function TableHead() {
         <th className="px-4 py-3 font-medium">Rank</th>
         <th className="px-4 py-3 font-medium">Player</th>
         <th className="px-4 py-3 font-medium">Score</th>
+        <th className="px-4 py-3 font-medium">Bonus</th>
         <th className="px-4 py-3 font-medium">Wins</th>
         <th className="px-4 py-3 font-medium">Losses</th>
         <th className="px-4 py-3 font-medium">Draw</th>
@@ -90,7 +96,7 @@ export default function LeaderboardTable({
             })}
             {players.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-slate-400">
+                <td colSpan={8} className="px-4 py-8 text-center text-slate-400">
                   ยังไม่มีผู้เล่นใน Leaderboard
                 </td>
               </tr>
