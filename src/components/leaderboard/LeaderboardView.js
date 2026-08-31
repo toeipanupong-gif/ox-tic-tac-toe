@@ -80,7 +80,7 @@ export default function LeaderboardView({
 
   return (
     <div className="space-y-6 overflow-visible">
-      <div className="relative z-30 flex justify-end overflow-visible">
+      <div className="relative z-30 flex justify-start overflow-visible sm:justify-end">
         <DifficultyDropdown value={difficulty} onChange={onSelectDifficulty} />
       </div>
 

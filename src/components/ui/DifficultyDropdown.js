@@ -160,7 +160,7 @@ export default function DifficultyDropdown({
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className={`flex min-w-[7.5rem] cursor-pointer items-center justify-between gap-2 rounded-xl border border-slate-700/70 bg-slate-900/50 px-3 py-2 text-left transition hover:border-teal-500/50 ${currentStyle.accent}`}
+        className={`flex min-w-[7.5rem] flex-1 cursor-pointer items-center justify-between gap-2 rounded-xl border border-slate-700/70 bg-slate-900/50 px-3 py-2 text-left transition hover:border-teal-500/50 sm:flex-none ${currentStyle.accent}`}
       >
         <span className="text-sm font-semibold leading-tight">
           {DIFFICULTY_LABELS[value]}

@@ -98,12 +98,12 @@ export default async function LeaderboardPage() {
   }
 
   return (
-    <section className="space-y-6">
+    <section className="space-y-4 sm:space-y-6">
       <div>
-        <h1 className="font-[family-name:var(--font-display)] text-4xl font-bold text-teal-300">
+        <h1 className="font-[family-name:var(--font-display)] text-3xl font-bold text-teal-300 sm:text-4xl">
           Leaderboard
         </h1>
-        <p className="mt-2 text-slate-300">
+        <p className="mt-2 text-sm text-slate-300 sm:text-base">
           จัดอันดับคะแนนตามระดับ
         </p>
       </div>

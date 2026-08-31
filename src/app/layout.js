@@ -69,7 +69,7 @@ export default function RootLayout({ children }) {
     <html lang="th" className={`${chakraPetch.variable} min-h-full antialiased`}>
       <body className={`${chakraPetch.className} flex min-h-full flex-col`}>
         <NavBar />
-        <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8">{children}</main>
+        <main className="mx-auto w-full max-w-5xl flex-1 px-3 py-6 sm:px-4 sm:py-8">{children}</main>
       </body>
     </html>
   );

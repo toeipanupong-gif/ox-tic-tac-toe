@@ -123,7 +123,7 @@ export default function GameClient({
   const boardLocked = status !== "PLAYING" || isPending || botThinking;
 
   return (
-    <div className="relative space-y-6">
+    <div className="relative space-y-4 sm:space-y-6">
       <ScoreBoard
         score={score}
         winStreak={winStreak}
@@ -132,14 +132,14 @@ export default function GameClient({
         botThinking={botThinking}
       />
 
-      <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-slate-300">
+      <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-slate-300 sm:gap-4 sm:text-sm">
         <span>
           คุณ: <strong className="text-cyan-300">X</strong>
         </span>
         <span>
           Bot: <strong className="text-amber-300">O</strong>
         </span>
-        <span className="rounded-lg border border-teal-500/40 bg-teal-500/10 px-3 py-1 font-semibold text-teal-200">
+        <span className="rounded-lg border border-teal-500/40 bg-teal-500/10 px-2.5 py-1 font-semibold text-teal-200 sm:px-3">
           {difficultyLabel(level)}
         </span>
       </div>

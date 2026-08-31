@@ -10,7 +10,7 @@ export default function Board({
   lastMoveIndex = null,
 }) {
   return (
-    <div className="mx-auto grid w-full max-w-sm grid-cols-3 gap-3">
+    <div className="mx-auto grid w-full max-w-[18rem] grid-cols-3 gap-2 sm:max-w-sm sm:gap-3">
       {board.map((value, index) => (
         <Cell
           key={`${index}-${value ?? "empty"}`}

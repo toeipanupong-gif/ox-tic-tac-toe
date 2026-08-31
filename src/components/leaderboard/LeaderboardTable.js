@@ -31,21 +31,31 @@ function PlayerRow({ player, rank, isSelf }) {
     <tr
       className={`border-t border-slate-800/80 ${isSelf ? "bg-teal-950/40 ring-1 ring-inset ring-teal-500/30" : ""}`}
     >
-      <td className="px-4 py-3 text-teal-300">{rank}</td>
-      <td className="px-4 py-3">
+      <td className="whitespace-nowrap px-3 py-2.5 text-teal-300 sm:px-4 sm:py-3">
+        {rank}
+      </td>
+      <td className="max-w-[8rem] truncate px-3 py-2.5 sm:max-w-none sm:px-4 sm:py-3">
         <span className={isSelf ? "font-semibold text-teal-200" : ""}>
           {displayName(player, isSelf)}
           {isSelf ? " (คุณ)" : ""}
         </span>
       </td>
-      <td className="px-4 py-3 font-semibold text-cyan-300">{player.score}</td>
-      <td className="px-4 py-3 text-violet-300">
+      <td className="whitespace-nowrap px-3 py-2.5 font-semibold text-cyan-300 sm:px-4 sm:py-3">
+        {player.score}
+      </td>
+      <td className="whitespace-nowrap px-3 py-2.5 text-violet-300 sm:px-4 sm:py-3">
         {totalBonus(player.score, player.wins, player.losses)}
       </td>
-      <td className="px-4 py-3 text-teal-300">{player.wins}</td>
-      <td className="px-4 py-3 text-rose-300">{player.losses}</td>
-      <td className="px-4 py-3 text-slate-200">{player.draws}</td>
-      <td className="px-4 py-3">
+      <td className="whitespace-nowrap px-3 py-2.5 text-teal-300 sm:px-4 sm:py-3">
+        {player.wins}
+      </td>
+      <td className="whitespace-nowrap px-3 py-2.5 text-rose-300 sm:px-4 sm:py-3">
+        {player.losses}
+      </td>
+      <td className="whitespace-nowrap px-3 py-2.5 text-slate-200 sm:px-4 sm:py-3">
+        {player.draws}
+      </td>
+      <td className="whitespace-nowrap px-3 py-2.5 sm:px-4 sm:py-3">
         {winRate(player.wins, player.losses, player.draws)}
       </td>
     </tr>
@@ -56,14 +66,14 @@ function TableHead() {
   return (
     <thead className="bg-slate-900/80 text-slate-400">
       <tr>
-        <th className="px-4 py-3 font-medium">Rank</th>
-        <th className="px-4 py-3 font-medium">Player</th>
-        <th className="px-4 py-3 font-medium">Score</th>
-        <th className="px-4 py-3 font-medium">Bonus</th>
-        <th className="px-4 py-3 font-medium">Wins</th>
-        <th className="px-4 py-3 font-medium">Losses</th>
-        <th className="px-4 py-3 font-medium">Draw</th>
-        <th className="px-4 py-3 font-medium">Win Rate</th>
+        <th className="whitespace-nowrap px-3 py-2.5 font-medium sm:px-4 sm:py-3">Rank</th>
+        <th className="whitespace-nowrap px-3 py-2.5 font-medium sm:px-4 sm:py-3">Player</th>
+        <th className="whitespace-nowrap px-3 py-2.5 font-medium sm:px-4 sm:py-3">Score</th>
+        <th className="whitespace-nowrap px-3 py-2.5 font-medium sm:px-4 sm:py-3">Bonus</th>
+        <th className="whitespace-nowrap px-3 py-2.5 font-medium sm:px-4 sm:py-3">Wins</th>
+        <th className="whitespace-nowrap px-3 py-2.5 font-medium sm:px-4 sm:py-3">Losses</th>
+        <th className="whitespace-nowrap px-3 py-2.5 font-medium sm:px-4 sm:py-3">Draw</th>
+        <th className="whitespace-nowrap px-3 py-2.5 font-medium sm:px-4 sm:py-3">Win Rate</th>
       </tr>
     </thead>
   );
@@ -79,8 +89,8 @@ export default function LeaderboardTable({
 }) {
   return (
     <div className="space-y-4">
-      <div className="overflow-x-auto rounded-2xl border border-slate-700/70">
-        <table className="min-w-full text-left text-sm">
+      <div className="-mx-1 overflow-x-auto rounded-2xl border border-slate-700/70 sm:mx-0">
+        <table className="min-w-[40rem] w-full text-left text-xs sm:min-w-full sm:text-sm">
           <TableHead />
           <tbody>
             {players.map((player, index) => {
@@ -108,8 +118,8 @@ export default function LeaderboardTable({
       {showSelfOutside && selfPlayer && (
         <div className="space-y-2">
           <p className="text-sm text-slate-400">อันดับของคุณ (อยู่นอกหน้านี้)</p>
-          <div className="overflow-x-auto rounded-2xl border border-teal-500/40">
-            <table className="min-w-full text-left text-sm">
+          <div className="-mx-1 overflow-x-auto rounded-2xl border border-teal-500/40 sm:mx-0">
+            <table className="min-w-[40rem] w-full text-left text-xs sm:min-w-full sm:text-sm">
               <TableHead />
               <tbody>
                 <PlayerRow

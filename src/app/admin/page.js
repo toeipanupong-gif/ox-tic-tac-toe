@@ -70,12 +70,14 @@ export default async function AdminPage() {
   }));
 
   return (
-    <section className="space-y-6">
+    <section className="space-y-4 sm:space-y-6">
       <div>
-        <h1 className="font-[family-name:var(--font-display)] text-4xl font-bold text-amber-300">
+        <h1 className="font-[family-name:var(--font-display)] text-3xl font-bold text-amber-300 sm:text-4xl">
           Admin Dashboard
         </h1>
-        <p className="mt-2 text-slate-300">ตรวจสอบผู้เล่น คะแนน และประวัติเกมตามระดับ Bot</p>
+        <p className="mt-2 text-sm text-slate-300 sm:text-base">
+          ตรวจสอบผู้เล่น คะแนน และประวัติเกมตามระดับ Bot
+        </p>
       </div>
 
       <AdminPanel

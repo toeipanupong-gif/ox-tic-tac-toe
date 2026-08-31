@@ -49,6 +49,39 @@ a {
   text-decoration: none;
 }
 
+/* scrollbar — ทั้งหน้า + ทุก container ที่ scroll */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(45, 212, 191, 0.45) rgba(8, 15, 28, 0.85);
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: rgba(8, 15, 28, 0.9);
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #2dd4bf 0%, #67e8f9 100%);
+  border-radius: 999px;
+  border: 2px solid rgba(8, 15, 28, 0.9);
+  background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #5eead4 0%, #a5f3fc 100%);
+  border: 2px solid rgba(8, 15, 28, 0.9);
+  background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
 @keyframes ox-float-a {
   0%,
   100% {
@@ -168,14 +201,21 @@ a {
   justify-content: center;
   border-radius: 1rem;
   background: #2dd4bf;
-  padding: 1rem 2.5rem;
-  font-size: 1.25rem;
+  padding: 0.875rem 1.75rem;
+  font-size: 1.125rem;
   font-weight: 700;
   color: #020617;
   transition:
     transform 0.2s ease,
     background-color 0.2s ease;
   animation: play-cta-pulse 2s ease-out infinite;
+}
+
+@media (min-width: 640px) {
+  .play-cta {
+    padding: 1rem 2.5rem;
+    font-size: 1.25rem;
+  }
 }
 
 .play-cta:hover {
@@ -339,7 +379,13 @@ a {
   background: rgba(2, 6, 23, 0.72);
   backdrop-filter: blur(4px);
   animation: result-backdrop-in 0.25s ease-out both;
-  padding: 1.5rem;
+  padding: 1rem;
+}
+
+@media (min-width: 640px) {
+  .result-overlay-backdrop {
+    padding: 1.5rem;
+  }
 }
 
 .result-overlay-card {

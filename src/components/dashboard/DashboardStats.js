@@ -31,22 +31,28 @@ export default function DashboardStats({ statsByDifficulty }) {
   };
 
   return (
-    <div className="flex flex-wrap items-stretch gap-2 sm:justify-end">
-      <DifficultyDropdown value={difficulty} onChange={selectDifficulty} />
+    <div className="flex w-full flex-col gap-3 sm:w-auto sm:items-end">
+      <DifficultyDropdown
+        value={difficulty}
+        onChange={selectDifficulty}
+        className="w-full justify-between sm:w-auto sm:justify-start"
+      />
 
-      {STAT_META.map(([label, key, color]) => (
-        <div
-          key={label}
-          className="flex min-w-[4.25rem] scale-90 flex-col justify-center rounded-xl border border-slate-700/70 bg-slate-900/50 px-3 py-2 text-center"
-        >
-          <p className="text-[10px] uppercase tracking-widest text-slate-400">
-            {label}
-          </p>
-          <p className={`mt-0.5 text-xl font-semibold ${color}`}>
-            {values[key]}
-          </p>
-        </div>
-      ))}
+      <div className="grid w-full grid-cols-3 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:justify-end">
+        {STAT_META.map(([label, key, color]) => (
+          <div
+            key={label}
+            className="flex min-w-0 flex-col justify-center rounded-xl border border-slate-700/70 bg-slate-900/50 px-2 py-2 text-center sm:min-w-[4.25rem] sm:scale-90 sm:px-3"
+          >
+            <p className="text-[10px] uppercase tracking-widest text-slate-400">
+              {label}
+            </p>
+            <p className={`mt-0.5 text-lg font-semibold sm:text-xl ${color}`}>
+              {values[key]}
+            </p>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

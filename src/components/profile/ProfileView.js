@@ -113,28 +113,30 @@ export default function ProfileView({
   };
 
   return (
-    <section className="space-y-8">
+    <section className="space-y-6 sm:space-y-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="font-[family-name:var(--font-display)] text-4xl font-bold text-teal-300">
+        <div className="min-w-0">
+          <h1 className="font-[family-name:var(--font-display)] text-3xl font-bold text-teal-300 sm:text-4xl">
             {user.name || "Player"}
           </h1>
-          <p className="mt-1 text-slate-400">{user.email}</p>
+          <p className="mt-1 break-all text-sm text-slate-400 sm:text-base">
+            {user.email}
+          </p>
         </div>
 
         <DifficultyDropdown value={difficulty} onChange={onSelectDifficulty} />
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
         {STAT_CARDS.map((card) => (
           <div
             key={card.key}
-            className={`rounded-2xl border p-4 ${card.color}`}
+            className={`rounded-xl border p-3 sm:rounded-2xl sm:p-4 ${card.color}`}
           >
-            <p className="text-xs uppercase tracking-widest text-slate-400">
+            <p className="text-[10px] uppercase tracking-widest text-slate-400 sm:text-xs">
               {card.label}
             </p>
-            <p className={`mt-2 text-2xl font-semibold ${card.valueClass}`}>
+            <p className={`mt-1 text-xl font-semibold sm:mt-2 sm:text-2xl ${card.valueClass}`}>
               {values[card.key]}
             </p>
           </div>
@@ -142,23 +144,23 @@ export default function ProfileView({
       </div>
 
       <div>
-        <h2 className="mb-3 text-lg font-semibold">Game History</h2>
+        <h2 className="mb-3 text-base font-semibold sm:text-lg">Game History</h2>
         {error && (
           <p className="mb-2 text-center text-sm text-rose-300">{error}</p>
         )}
         <div
-          className={`overflow-x-auto rounded-2xl border border-slate-700/70 ${
+          className={`-mx-1 overflow-x-auto rounded-2xl border border-slate-700/70 sm:mx-0 ${
             loading ? "opacity-60" : ""
           }`}
         >
-          <table className="min-w-full text-left text-sm">
+          <table className="min-w-[32rem] w-full text-left text-xs sm:min-w-full sm:text-sm">
             <thead className="bg-slate-900/80 text-slate-400">
               <tr>
-                <th className="px-4 py-3">Result</th>
-                <th className="px-4 py-3">Score Δ</th>
-                <th className="px-4 py-3">Bonus</th>
-                <th className="px-4 py-3">Streak</th>
-                <th className="px-4 py-3">When</th>
+                <th className="whitespace-nowrap px-3 py-2.5 sm:px-4 sm:py-3">Result</th>
+                <th className="whitespace-nowrap px-3 py-2.5 sm:px-4 sm:py-3">Score Δ</th>
+                <th className="whitespace-nowrap px-3 py-2.5 sm:px-4 sm:py-3">Bonus</th>
+                <th className="whitespace-nowrap px-3 py-2.5 sm:px-4 sm:py-3">Streak</th>
+                <th className="whitespace-nowrap px-3 py-2.5 sm:px-4 sm:py-3">When</th>
               </tr>
             </thead>
             <tbody>
@@ -166,17 +168,19 @@ export default function ProfileView({
                 const color = RESULT_STYLE[game.result] || "text-slate-200";
                 return (
                   <tr key={game.id} className="border-t border-slate-800/80">
-                    <td className={`px-4 py-3 font-semibold ${color}`}>
+                    <td className={`whitespace-nowrap px-3 py-2.5 font-semibold sm:px-4 sm:py-3 ${color}`}>
                       {game.result}
                     </td>
-                    <td className={`px-4 py-3 font-semibold ${color}`}>
+                    <td className={`whitespace-nowrap px-3 py-2.5 font-semibold sm:px-4 sm:py-3 ${color}`}>
                       {game.scoreChange}
                     </td>
-                    <td className={`px-4 py-3 font-semibold ${color}`}>
+                    <td className={`whitespace-nowrap px-3 py-2.5 font-semibold sm:px-4 sm:py-3 ${color}`}>
                       {game.bonusScore}
                     </td>
-                    <td className="px-4 py-3">{game.winStreak}</td>
-                    <td className="px-4 py-3 text-slate-400">
+                    <td className="whitespace-nowrap px-3 py-2.5 sm:px-4 sm:py-3">
+                      {game.winStreak}
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-2.5 text-slate-400 sm:px-4 sm:py-3">
                       {new Date(game.createdAt).toLocaleString("th-TH")}
                     </td>
                   </tr>
@@ -197,7 +201,7 @@ export default function ProfileView({
         </div>
 
         {totalPages > 1 && (
-          <div className="flex items-center justify-center gap-2 pt-4">
+          <div className="flex flex-wrap items-center justify-center gap-2 pt-4">
             <button
               type="button"
               disabled={safePage <= 1 || loading}

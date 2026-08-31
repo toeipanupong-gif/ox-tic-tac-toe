@@ -31,29 +31,36 @@ export default async function DashboardPage() {
   );
 
   return (
-    <section className="space-y-10">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <section className="space-y-8 sm:space-y-10">
+      <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
         <div>
-          <h1 className="font-[family-name:var(--font-display)] text-4xl font-bold tracking-tight text-teal-300 sm:text-5xl">
+          <h1 className="font-[family-name:var(--font-display)] text-3xl font-bold tracking-tight text-teal-300 sm:text-4xl md:text-5xl">
             OX Arena
           </h1>
-          <p className="mt-2 text-slate-300">สวัสดี, {session.user.name || session.user.email}</p>
+          <p className="mt-2 text-sm text-slate-300 sm:text-base">
+            สวัสดี, {session.user.name || session.user.email}
+          </p>
         </div>
 
         <DashboardStats statsByDifficulty={serializable} />
       </div>
 
-      <div className="flex flex-col items-center justify-center gap-8 py-10 text-center">
-        <div className="play-mascot relative flex h-48 w-64 items-center justify-center" aria-hidden>
-          <span className="play-mascot-x absolute left-0 top-0 font-[family-name:var(--font-display)] text-9xl font-extrabold text-teal-400">
+      <div className="flex flex-col items-center justify-center gap-6 py-6 text-center sm:gap-8 sm:py-10">
+        <div
+          className="play-mascot relative flex h-36 w-48 items-center justify-center sm:h-48 sm:w-64"
+          aria-hidden
+        >
+          <span className="play-mascot-x absolute left-0 top-0 font-[family-name:var(--font-display)] text-7xl font-extrabold text-teal-400 sm:text-9xl">
             O
           </span>
-          <span className="play-mascot-o absolute bottom-0 right-0 font-[family-name:var(--font-display)] text-9xl font-extrabold text-cyan-300">
+          <span className="play-mascot-o absolute bottom-0 right-0 font-[family-name:var(--font-display)] text-7xl font-extrabold text-cyan-300 sm:text-9xl">
             X
           </span>
         </div>
 
-        <p className="max-w-sm text-lg text-slate-300">พร้อมวัดฝีมือบนกระดาน OX แล้วหรือยัง?</p>
+        <p className="max-w-sm px-2 text-base text-slate-300 sm:text-lg">
+          พร้อมวัดฝีมือบนกระดาน OX แล้วหรือยัง?
+        </p>
 
         <StartGameButton />
       </div>

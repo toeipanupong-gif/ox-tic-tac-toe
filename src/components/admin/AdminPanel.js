@@ -43,7 +43,7 @@ function winRateLabel(wins, losses, draws) {
 function SortHeader({ label, sortKey, sort, onSort, className = "" }) {
   const active = sort.key === sortKey;
   return (
-    <th className={`px-4 py-3 ${className}`}>
+    <th className={`whitespace-nowrap px-3 py-2.5 sm:px-4 sm:py-3 ${className}`}>
       <button
         type="button"
         onClick={() => onSort(sortKey)}
@@ -415,37 +415,37 @@ export default function AdminPanel({
   const totalGames = summary?.totalGames ?? 0;
 
   return (
-    <div className="space-y-8 overflow-visible">
-      <div className="relative z-30 flex justify-end overflow-visible">
+    <div className="space-y-6 overflow-visible sm:space-y-8">
+      <div className="relative z-30 flex justify-start overflow-visible sm:justify-end">
         <DifficultyDropdown value={difficulty} onChange={onSelectDifficulty} />
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <div className="rounded-2xl border border-slate-700/70 bg-slate-900/50 p-5">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
+        <div className="rounded-xl border border-slate-700/70 bg-slate-900/50 p-4 sm:rounded-2xl sm:p-5">
           <p className="text-sm text-slate-400">ผู้เล่นทั้งหมด</p>
-          <p className="mt-2 text-3xl font-semibold text-teal-300">{totalPlayers}</p>
+          <p className="mt-2 text-2xl font-semibold text-teal-300 sm:text-3xl">{totalPlayers}</p>
         </div>
-        <div className="rounded-2xl border border-slate-700/70 bg-slate-900/50 p-5">
+        <div className="rounded-xl border border-slate-700/70 bg-slate-900/50 p-4 sm:rounded-2xl sm:p-5">
           <p className="text-sm text-slate-400">เกม ({difficultyLabel(difficulty)})</p>
-          <p className="mt-2 text-3xl font-semibold text-amber-300">{totalGames}</p>
+          <p className="mt-2 text-2xl font-semibold text-amber-300 sm:text-3xl">{totalGames}</p>
         </div>
-        <div className="rounded-2xl border border-cyan-500/30 bg-cyan-500/10 p-5">
+        <div className="rounded-xl border border-cyan-500/30 bg-cyan-500/10 p-4 sm:rounded-2xl sm:p-5">
           <p className="text-sm text-slate-400">ระดับที่ดู</p>
-          <p className="mt-2 text-3xl font-semibold text-cyan-300">
+          <p className="mt-2 text-2xl font-semibold text-cyan-300 sm:text-3xl">
             {difficultyLabel(difficulty)}
           </p>
         </div>
       </div>
 
       <section className="space-y-4">
-        <h2 className="text-lg font-semibold text-slate-100">Players</h2>
+        <h2 className="text-base font-semibold text-slate-100 sm:text-lg">Players</h2>
 
-        <div className="relative z-20 flex flex-wrap items-center gap-3">
+        <div className="relative z-20 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
           <FilterInput
             value={playerSearch}
             onChange={setPlayerSearch}
             placeholder="ค้นหาชื่อหรืออีเมล"
-            className="min-w-[14rem] flex-1"
+            className="w-full min-w-0 flex-1 sm:min-w-[14rem]"
           />
           <SelectDropdown
             value={playerRole}
@@ -464,11 +464,11 @@ export default function AdminPanel({
         </div>
 
         <div
-          className={`overflow-x-auto rounded-2xl border border-slate-700/70 ${
+          className={`-mx-1 overflow-x-auto rounded-2xl border border-slate-700/70 sm:mx-0 ${
             playersLoading ? "opacity-60" : ""
           }`}
         >
-          <table className="min-w-full text-left text-sm">
+          <table className="min-w-[48rem] w-full text-left text-xs sm:text-sm">
             <thead className="bg-slate-900/80 text-slate-400">
               <tr>
                 <SortHeader label="Player" sortKey="player" sort={playerSort} onSort={togglePlayerSort} />
@@ -485,15 +485,15 @@ export default function AdminPanel({
             <tbody>
               {pagePlayers.map((user) => (
                 <tr key={user.id} className="border-t border-slate-800/80 align-top">
-                  <td className="px-4 py-3">{user.name || "-"}</td>
-                  <td className="px-4 py-3 text-slate-400">{user.email}</td>
-                  <td className="px-4 py-3">{user.role}</td>
-                  <td className="px-4 py-3 text-cyan-300">{user.score}</td>
-                  <td className="px-4 py-3 text-teal-300">{user.wins}</td>
-                  <td className="px-4 py-3 text-rose-300">{user.losses}</td>
-                  <td className="px-4 py-3">{user.draws}</td>
-                  <td className="px-4 py-3">{user.winStreak}</td>
-                  <td className="px-4 py-3">
+                  <td className="whitespace-nowrap px-3 py-2.5 sm:px-4 sm:py-3">{user.name || "-"}</td>
+                  <td className="whitespace-nowrap px-3 py-2.5 text-slate-400 sm:px-4 sm:py-3">{user.email}</td>
+                  <td className="whitespace-nowrap px-3 py-2.5 sm:px-4 sm:py-3">{user.role}</td>
+                  <td className="whitespace-nowrap px-3 py-2.5 text-cyan-300 sm:px-4 sm:py-3">{user.score}</td>
+                  <td className="whitespace-nowrap px-3 py-2.5 text-teal-300 sm:px-4 sm:py-3">{user.wins}</td>
+                  <td className="whitespace-nowrap px-3 py-2.5 text-rose-300 sm:px-4 sm:py-3">{user.losses}</td>
+                  <td className="whitespace-nowrap px-3 py-2.5 sm:px-4 sm:py-3">{user.draws}</td>
+                  <td className="whitespace-nowrap px-3 py-2.5 sm:px-4 sm:py-3">{user.winStreak}</td>
+                  <td className="whitespace-nowrap px-3 py-2.5 sm:px-4 sm:py-3">
                     {winRateLabel(user.wins, user.losses, user.draws)}
                   </td>
                 </tr>
@@ -518,16 +518,16 @@ export default function AdminPanel({
       </section>
 
       <section className="space-y-4">
-        <h2 className="text-lg font-semibold text-slate-100">
+        <h2 className="text-base font-semibold text-slate-100 sm:text-lg">
           Game History — {difficultyLabel(difficulty)}
         </h2>
 
-        <div className="relative z-20 flex flex-wrap items-center gap-3">
+        <div className="relative z-20 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
           <FilterInput
             value={gameSearch}
             onChange={setGameSearch}
             placeholder="ค้นหาชื่อผู้เล่น"
-            className="min-w-[12rem] flex-1"
+            className="w-full min-w-0 flex-1 sm:min-w-[12rem]"
           />
           <SelectDropdown
             value={gameResult}
@@ -554,11 +554,11 @@ export default function AdminPanel({
         </div>
 
         <div
-          className={`overflow-x-auto rounded-2xl border border-slate-700/70 ${
+          className={`-mx-1 overflow-x-auto rounded-2xl border border-slate-700/70 sm:mx-0 ${
             gamesLoading ? "opacity-60" : ""
           }`}
         >
-          <table className="min-w-full text-left text-sm">
+          <table className="min-w-[36rem] w-full text-left text-xs sm:text-sm">
             <thead className="bg-slate-900/80 text-slate-400">
               <tr>
                 <SortHeader label="Player" sortKey="player" sort={gameSort} onSort={toggleGameSort} />
@@ -574,14 +574,14 @@ export default function AdminPanel({
                 const color = RESULT_STYLE[game.result] || "text-slate-200";
                 return (
                   <tr key={game.id} className="border-t border-slate-800/80">
-                    <td className="px-4 py-3">
+                    <td className="whitespace-nowrap px-3 py-2.5 sm:px-4 sm:py-3">
                       {game.user?.name || game.user?.email || "-"}
                     </td>
-                    <td className={`px-4 py-3 font-semibold ${color}`}>{game.result}</td>
-                    <td className={`px-4 py-3 font-semibold ${color}`}>{game.scoreChange}</td>
-                    <td className={`px-4 py-3 font-semibold ${color}`}>{game.bonusScore}</td>
-                    <td className="px-4 py-3">{game.winStreak}</td>
-                    <td className="px-4 py-3 text-slate-400">
+                    <td className={`whitespace-nowrap px-3 py-2.5 font-semibold sm:px-4 sm:py-3 ${color}`}>{game.result}</td>
+                    <td className={`whitespace-nowrap px-3 py-2.5 font-semibold sm:px-4 sm:py-3 ${color}`}>{game.scoreChange}</td>
+                    <td className={`whitespace-nowrap px-3 py-2.5 font-semibold sm:px-4 sm:py-3 ${color}`}>{game.bonusScore}</td>
+                    <td className="whitespace-nowrap px-3 py-2.5 sm:px-4 sm:py-3">{game.winStreak}</td>
+                    <td className="whitespace-nowrap px-3 py-2.5 text-slate-400 sm:px-4 sm:py-3">
                       {new Date(game.createdAt).toLocaleString("th-TH")}
                     </td>
                   </tr>
