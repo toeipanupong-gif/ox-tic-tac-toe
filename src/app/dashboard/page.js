@@ -35,11 +35,11 @@ export default async function DashboardPage() {
       <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
         <div>
           <h1 className="font-[family-name:var(--font-display)] text-3xl font-bold tracking-tight text-teal-300 sm:text-4xl md:text-5xl">
-            OX Arena
+            Hello,
+            <span className="mt-2 block text-xl font-semibold tracking-normal text-slate-200 sm:text-2xl">
+              {session.user.name || session.user.email}
+            </span>
           </h1>
-          <p className="mt-2 text-sm text-slate-300 sm:text-base">
-            สวัสดี, {session.user.name || session.user.email}
-          </p>
         </div>
 
         <DashboardStats statsByDifficulty={serializable} />
