@@ -2,7 +2,16 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import AdminPanel from "@/components/admin/AdminPanel";
-import { DIFFICULTIES } from "@/lib/game/difficulty";
+import { DEFAULT_DIFFICULTY } from "@/lib/game/difficulty";
+import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
+import { createPageMetadata } from "@/lib/seo";
+
+export const metadata = createPageMetadata({
+  title: "Admin",
+  description: "แผงควบคุมแอดมิน OX Arena",
+  path: "/admin",
+  noIndex: true,
+});
 
 export default async function AdminPage() {
   const session = await auth();
@@ -10,85 +19,55 @@ export default async function AdminPage() {
     redirect("/dashboard");
   }
 
-  const [users, totalPlayers, stats, games] = await Promise.all([
-    prisma.user.findMany({
-      orderBy: { createdAt: "desc" },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-      },
-    }),
-    prisma.user.count(),
-    prisma.userStat.findMany({
-      select: {
-        userId: true,
-        difficulty: true,
-        score: true,
-        wins: true,
-        losses: true,
-        draws: true,
-        winStreak: true,
-      },
-    }),
-    prisma.game.findMany({
-      orderBy: { createdAt: "desc" },
-      include: {
-        user: { select: { name: true, email: true } },
-      },
-    }),
-  ]);
+  const difficulty = DEFAULT_DIFFICULTY;
+  const pageSize = DEFAULT_PAGE_SIZE;
 
-  const usersByDifficulty = Object.fromEntries(
-    DIFFICULTIES.map((difficulty) => {
-      const statByUser = Object.fromEntries(
-        stats
-          .filter((s) => s.difficulty === difficulty)
-          .map((s) => [s.userId, s])
-      );
+  const [totalPlayers, totalGames, playerTotal, playerRows, gameRows] =
+    await Promise.all([
+      prisma.user.count(),
+      prisma.game.count({ where: { difficulty } }),
+      prisma.userStat.count({ where: { difficulty } }),
+      prisma.userStat.findMany({
+        where: { difficulty },
+        include: {
+          user: {
+            select: { id: true, name: true, email: true, role: true },
+          },
+        },
+        orderBy: [{ score: "desc" }, { wins: "desc" }],
+        take: pageSize,
+      }),
+      prisma.game.findMany({
+        where: { difficulty },
+        orderBy: { createdAt: "desc" },
+        take: pageSize,
+        include: {
+          user: { select: { name: true, email: true } },
+        },
+      }),
+    ]);
 
-      const usersWithStats = users
-        .map((user) => {
-          const s = statByUser[user.id];
-          return {
-            ...user,
-            score: s?.score ?? 0,
-            wins: s?.wins ?? 0,
-            losses: s?.losses ?? 0,
-            draws: s?.draws ?? 0,
-            winStreak: s?.winStreak ?? 0,
-          };
-        })
-        .sort((a, b) => b.score - a.score || b.wins - a.wins);
+  const players = playerRows.map((s) => ({
+    id: s.user.id,
+    name: s.user.name,
+    email: s.user.email,
+    role: s.user.role,
+    score: s.score,
+    wins: s.wins,
+    losses: s.losses,
+    draws: s.draws,
+    winStreak: s.winStreak,
+  }));
 
-      return [difficulty, usersWithStats];
-    })
-  );
-
-  const gamesByDifficulty = Object.fromEntries(
-    DIFFICULTIES.map((difficulty) => [
-      difficulty,
-      games
-        .filter((g) => g.difficulty === difficulty)
-        .map((g) => ({
-          id: g.id,
-          result: g.result,
-          scoreChange: g.scoreChange,
-          bonusScore: g.bonusScore,
-          winStreak: g.winStreak,
-          createdAt: g.createdAt.toISOString(),
-          user: g.user,
-        })),
-    ])
-  );
-
-  const totalGamesByDifficulty = Object.fromEntries(
-    DIFFICULTIES.map((difficulty) => [
-      difficulty,
-      gamesByDifficulty[difficulty].length,
-    ])
-  );
+  const games = gameRows.map((g) => ({
+    id: g.id,
+    result: g.result,
+    scoreChange: g.scoreChange,
+    bonusScore: g.bonusScore,
+    winStreak: g.winStreak,
+    createdAt: g.createdAt.toISOString(),
+    user: g.user,
+  }));
 
   return (
     <section className="space-y-6">
@@ -100,10 +79,22 @@ export default async function AdminPage() {
       </div>
 
       <AdminPanel
-        usersByDifficulty={usersByDifficulty}
-        totalGamesByDifficulty={totalGamesByDifficulty}
-        totalPlayers={totalPlayers}
-        gamesByDifficulty={gamesByDifficulty}
+        initialDifficulty={difficulty}
+        initialSummary={{ totalPlayers, totalGames }}
+        initialPlayers={{
+          players,
+          total: playerTotal,
+          page: 1,
+          pageSize,
+          totalPages: Math.max(1, Math.ceil(playerTotal / pageSize)),
+        }}
+        initialGames={{
+          games,
+          total: totalGames,
+          page: 1,
+          pageSize,
+          totalPages: Math.max(1, Math.ceil(totalGames / pageSize)),
+        }}
       />
     </section>
   );

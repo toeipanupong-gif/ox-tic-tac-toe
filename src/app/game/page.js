@@ -3,6 +3,13 @@ import { auth } from "@/lib/auth";
 import { getUserStat } from "@/lib/game/stats";
 import { normalizeDifficulty, difficultyLabel } from "@/lib/game/difficulty";
 import GameClient from "@/components/game/GameClient";
+import { createPageMetadata } from "@/lib/seo";
+
+export const metadata = createPageMetadata({
+  title: "Play",
+  description: "เล่น Tic-Tac-Toe กับ Bot ใน OX Arena — เลือกระดับความยากแล้ววัดฝีมือ",
+  path: "/game",
+});
 
 export default async function GamePage({ searchParams }) {
   const session = await auth();

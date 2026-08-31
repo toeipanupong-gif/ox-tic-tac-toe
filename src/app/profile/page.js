@@ -2,8 +2,16 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import ProfileView from "@/components/profile/ProfileView";
-import { DIFFICULTIES } from "@/lib/game/difficulty";
+import { DEFAULT_DIFFICULTY, DIFFICULTIES } from "@/lib/game/difficulty";
 import { getOrCreateAllStats } from "@/lib/game/stats";
+import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
+import { createPageMetadata } from "@/lib/seo";
+
+export const metadata = createPageMetadata({
+  title: "Profile",
+  description: "โปรไฟล์ผู้เล่น OX Arena — สถิติและประวัติเกมของคุณ",
+  path: "/profile",
+});
 
 export default async function ProfilePage() {
   const session = await auth();
@@ -16,14 +24,20 @@ export default async function ProfilePage() {
 
   if (!user) redirect("/login");
 
-  const [statsByDifficultyRaw, games] = await Promise.all([
+  const difficulty = DEFAULT_DIFFICULTY;
+  const pageSize = DEFAULT_PAGE_SIZE;
+
+  const [statsByDifficultyRaw, totalGames, games] = await Promise.all([
     getOrCreateAllStats(user.id),
+    prisma.game.count({
+      where: { userId: user.id, difficulty },
+    }),
     prisma.game.findMany({
-      where: { userId: user.id },
+      where: { userId: user.id, difficulty },
       orderBy: { createdAt: "desc" },
+      take: pageSize,
       select: {
         id: true,
-        difficulty: true,
         result: true,
         scoreChange: true,
         bonusScore: true,
@@ -49,27 +63,21 @@ export default async function ProfilePage() {
     })
   );
 
-  const gamesByDifficulty = Object.fromEntries(
-    DIFFICULTIES.map((level) => [
-      level,
-      games
-        .filter((g) => g.difficulty === level)
-        .map((g) => ({
-          id: g.id,
-          result: g.result,
-          scoreChange: g.scoreChange,
-          bonusScore: g.bonusScore,
-          winStreak: g.winStreak,
-          createdAt: g.createdAt.toISOString(),
-        })),
-    ])
-  );
-
   return (
     <ProfileView
       user={user}
       statsByDifficulty={statsByDifficulty}
-      gamesByDifficulty={gamesByDifficulty}
+      initialDifficulty={difficulty}
+      initialGames={{
+        games: games.map((g) => ({
+          ...g,
+          createdAt: g.createdAt.toISOString(),
+        })),
+        total: totalGames,
+        page: 1,
+        pageSize,
+        totalPages: Math.max(1, Math.ceil(totalGames / pageSize)),
+      }}
     />
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import DifficultyDropdown, {
   useStoredDifficulty,
 } from "@/components/ui/DifficultyDropdown";
@@ -10,8 +10,10 @@ import {
   DEFAULT_DIFFICULTY,
   difficultyLabel,
 } from "@/lib/game/difficulty";
+import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = DEFAULT_PAGE_SIZE;
+const SEARCH_DEBOUNCE_MS = 300;
 
 const RESULT_STYLE = {
   WIN: "text-teal-300",
@@ -32,27 +34,10 @@ const RESULT_OPTIONS = [
   { value: "DRAW", label: "DRAW" },
 ];
 
-function winRate(wins, losses, draws) {
-  const total = wins + losses + draws;
-  if (total === 0) return 0;
-  return (wins / total) * 100;
-}
-
 function winRateLabel(wins, losses, draws) {
-  return `${winRate(wins, losses, draws).toFixed(1)}%`;
-}
-
-function compareValues(a, b, dir) {
-  if (a == null && b == null) return 0;
-  if (a == null) return 1;
-  if (b == null) return -1;
-  if (typeof a === "string" && typeof b === "string") {
-    const cmp = a.localeCompare(b, "th", { sensitivity: "base" });
-    return dir === "asc" ? cmp : -cmp;
-  }
-  if (a < b) return dir === "asc" ? -1 : 1;
-  if (a > b) return dir === "asc" ? 1 : -1;
-  return 0;
+  const total = wins + losses + draws;
+  if (total === 0) return "0.0%";
+  return `${((wins / total) * 100).toFixed(1)}%`;
 }
 
 function SortHeader({ label, sortKey, sort, onSort, className = "" }) {
@@ -75,7 +60,7 @@ function SortHeader({ label, sortKey, sort, onSort, className = "" }) {
   );
 }
 
-function ClientPagination({ page, totalPages, onChange }) {
+function ClientPagination({ page, totalPages, onChange, disabled }) {
   if (totalPages <= 1) return null;
   const safePage = Math.min(page, totalPages);
 
@@ -83,10 +68,10 @@ function ClientPagination({ page, totalPages, onChange }) {
     <div className="flex items-center justify-center gap-2 pt-4">
       <button
         type="button"
-        disabled={safePage <= 1}
+        disabled={safePage <= 1 || disabled}
         onClick={() => onChange(Math.max(1, safePage - 1))}
         className={`cursor-pointer rounded-lg border border-slate-700/70 px-3 py-1.5 text-sm ${
-          safePage <= 1
+          safePage <= 1 || disabled
             ? "pointer-events-none opacity-40"
             : "text-slate-300 hover:border-teal-500/50 hover:text-teal-200"
         }`}
@@ -98,10 +83,10 @@ function ClientPagination({ page, totalPages, onChange }) {
       </span>
       <button
         type="button"
-        disabled={safePage >= totalPages}
+        disabled={safePage >= totalPages || disabled}
         onClick={() => onChange(Math.min(totalPages, safePage + 1))}
         className={`cursor-pointer rounded-lg border border-slate-700/70 px-3 py-1.5 text-sm ${
-          safePage >= totalPages
+          safePage >= totalPages || disabled
             ? "pointer-events-none opacity-40"
             : "text-slate-300 hover:border-teal-500/50 hover:text-teal-200"
         }`}
@@ -124,23 +109,59 @@ function FilterInput({ value, onChange, placeholder, className = "" }) {
   );
 }
 
-function dayStart(isoDate) {
-  if (!isoDate) return null;
-  const d = new Date(`${isoDate}T00:00:00`);
-  return Number.isNaN(d.getTime()) ? null : d.getTime();
+function useDebouncedValue(value, delay) {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(t);
+  }, [value, delay]);
+  return debounced;
 }
 
-function dayEnd(isoDate) {
-  if (!isoDate) return null;
-  const d = new Date(`${isoDate}T23:59:59.999`);
-  return Number.isNaN(d.getTime()) ? null : d.getTime();
+async function fetchPlayers(params) {
+  const qs = new URLSearchParams({
+    difficulty: params.difficulty,
+    page: String(params.page),
+    pageSize: String(PAGE_SIZE),
+    search: params.search,
+    role: params.role,
+    sort: params.sort.key,
+    dir: params.sort.dir,
+  });
+  const res = await fetch(`/api/admin/players?${qs}`);
+  if (!res.ok) throw new Error("Failed to load players");
+  return res.json();
+}
+
+async function fetchGames(params) {
+  const qs = new URLSearchParams({
+    difficulty: params.difficulty,
+    page: String(params.page),
+    pageSize: String(PAGE_SIZE),
+    search: params.search,
+    result: params.result,
+    from: params.from,
+    to: params.to,
+    sort: params.sort.key,
+    dir: params.sort.dir,
+  });
+  const res = await fetch(`/api/admin/games?${qs}`);
+  if (!res.ok) throw new Error("Failed to load games");
+  return res.json();
+}
+
+async function fetchSummary(difficulty) {
+  const qs = new URLSearchParams({ difficulty });
+  const res = await fetch(`/api/admin/summary?${qs}`);
+  if (!res.ok) throw new Error("Failed to load summary");
+  return res.json();
 }
 
 export default function AdminPanel({
-  usersByDifficulty,
-  totalGamesByDifficulty,
-  totalPlayers,
-  gamesByDifficulty,
+  initialDifficulty = DEFAULT_DIFFICULTY,
+  initialSummary,
+  initialPlayers,
+  initialGames,
 }) {
   const [difficulty, selectDifficulty] = useStoredDifficulty();
 
@@ -156,170 +177,183 @@ export default function AdminPanel({
   const [gameSort, setGameSort] = useState({ key: "when", dir: "desc" });
   const [gamePage, setGamePage] = useState(1);
 
-  const users =
-    usersByDifficulty[difficulty] ||
-    usersByDifficulty[DEFAULT_DIFFICULTY] ||
-    [];
-  const recentGames =
-    gamesByDifficulty[difficulty] ||
-    gamesByDifficulty[DEFAULT_DIFFICULTY] ||
-    [];
-  const totalGames =
-    totalGamesByDifficulty[difficulty] ??
-    totalGamesByDifficulty[DEFAULT_DIFFICULTY] ??
-    0;
-
-  const filteredPlayers = useMemo(() => {
-    const q = playerSearch.trim().toLowerCase();
-    let list = users.filter((user) => {
-      if (playerRole !== "ALL" && user.role !== playerRole) return false;
-      if (!q) return true;
-      const name = (user.name || "").toLowerCase();
-      const email = (user.email || "").toLowerCase();
-      return name.includes(q) || email.includes(q);
-    });
-
-    list = [...list].sort((a, b) => {
-      const key = playerSort.key;
-      let av;
-      let bv;
-      switch (key) {
-        case "player":
-          av = a.name || "";
-          bv = b.name || "";
-          break;
-        case "email":
-          av = a.email || "";
-          bv = b.email || "";
-          break;
-        case "role":
-          av = a.role || "";
-          bv = b.role || "";
-          break;
-        case "score":
-          av = a.score;
-          bv = b.score;
-          break;
-        case "wins":
-          av = a.wins;
-          bv = b.wins;
-          break;
-        case "losses":
-          av = a.losses;
-          bv = b.losses;
-          break;
-        case "draws":
-          av = a.draws;
-          bv = b.draws;
-          break;
-        case "winStreak":
-          av = a.winStreak;
-          bv = b.winStreak;
-          break;
-        case "winRate":
-          av = winRate(a.wins, a.losses, a.draws);
-          bv = winRate(b.wins, b.losses, b.draws);
-          break;
-        default:
-          av = a.score;
-          bv = b.score;
-      }
-      return compareValues(av, bv, playerSort.dir);
-    });
-
-    return list;
-  }, [users, playerSearch, playerRole, playerSort]);
-
-  const filteredGames = useMemo(() => {
-    const q = gameSearch.trim().toLowerCase();
-    const fromTs = dayStart(dateFrom);
-    const toTs = dayEnd(dateTo);
-
-    let list = recentGames.filter((game) => {
-      if (gameResult !== "ALL" && game.result !== gameResult) return false;
-
-      if (q) {
-        const name = (game.user?.name || "").toLowerCase();
-        if (!name.includes(q)) return false;
-      }
-
-      const ts = new Date(game.createdAt).getTime();
-      if (fromTs != null && ts < fromTs) return false;
-      if (toTs != null && ts > toTs) return false;
-      return true;
-    });
-
-    list = [...list].sort((a, b) => {
-      const key = gameSort.key;
-      let av;
-      let bv;
-      switch (key) {
-        case "player":
-          av = a.user?.name || a.user?.email || "";
-          bv = b.user?.name || b.user?.email || "";
-          break;
-        case "result":
-          av = a.result || "";
-          bv = b.result || "";
-          break;
-        case "scoreChange":
-          av = a.scoreChange;
-          bv = b.scoreChange;
-          break;
-        case "bonusScore":
-          av = a.bonusScore;
-          bv = b.bonusScore;
-          break;
-        case "winStreak":
-          av = a.winStreak;
-          bv = b.winStreak;
-          break;
-        case "when":
-          av = new Date(a.createdAt).getTime();
-          bv = new Date(b.createdAt).getTime();
-          break;
-        default:
-          av = new Date(a.createdAt).getTime();
-          bv = new Date(b.createdAt).getTime();
-      }
-      return compareValues(av, bv, gameSort.dir);
-    });
-
-    return list;
-  }, [recentGames, gameSearch, gameResult, dateFrom, dateTo, gameSort]);
-
-  const playerTotalPages = Math.max(
-    1,
-    Math.ceil(filteredPlayers.length / PAGE_SIZE)
+  const debouncedPlayerSearch = useDebouncedValue(
+    playerSearch,
+    SEARCH_DEBOUNCE_MS
   );
-  const gameTotalPages = Math.max(
-    1,
-    Math.ceil(filteredGames.length / PAGE_SIZE)
-  );
-  const safePlayerPage = Math.min(playerPage, playerTotalPages);
-  const safeGamePage = Math.min(gamePage, gameTotalPages);
+  const debouncedGameSearch = useDebouncedValue(gameSearch, SEARCH_DEBOUNCE_MS);
 
-  const pagePlayers = filteredPlayers.slice(
-    (safePlayerPage - 1) * PAGE_SIZE,
-    safePlayerPage * PAGE_SIZE
-  );
-  const pageGames = filteredGames.slice(
-    (safeGamePage - 1) * PAGE_SIZE,
-    safeGamePage * PAGE_SIZE
-  );
+  const [summary, setSummary] = useState(initialSummary);
+  const [playersData, setPlayersData] = useState(initialPlayers);
+  const [gamesData, setGamesData] = useState(initialGames);
+  const [playersLoading, setPlayersLoading] = useState(false);
+  const [gamesLoading, setGamesLoading] = useState(false);
+
+  const skipPlayersFirst = useRef(true);
+  const skipGamesFirst = useRef(true);
+  const skipSummaryFirst = useRef(true);
+  const playersReq = useRef(0);
+  const gamesReq = useRef(0);
+  const summaryReq = useRef(0);
+  const playerFilterKey = useRef("");
+  const gameFilterKey = useRef("");
+
+  const nextPlayerFilterKey = [
+    difficulty,
+    debouncedPlayerSearch,
+    playerRole,
+    playerSort.key,
+    playerSort.dir,
+  ].join("|");
+
+  const nextGameFilterKey = [
+    difficulty,
+    debouncedGameSearch,
+    gameResult,
+    dateFrom,
+    dateTo,
+    gameSort.key,
+    gameSort.dir,
+  ].join("|");
 
   useEffect(() => {
-    setPlayerPage(1);
-    setGamePage(1);
-  }, [difficulty]);
+    if (skipSummaryFirst.current && difficulty === initialDifficulty) {
+      skipSummaryFirst.current = false;
+      return;
+    }
+    skipSummaryFirst.current = false;
+
+    const id = ++summaryReq.current;
+    fetchSummary(difficulty)
+      .then((nextSummary) => {
+        if (id !== summaryReq.current) return;
+        setSummary({
+          totalPlayers: nextSummary.totalPlayers,
+          totalGames: nextSummary.totalGames,
+        });
+      })
+      .catch(() => {
+        if (id !== summaryReq.current) return;
+      });
+  }, [difficulty, initialDifficulty]);
 
   useEffect(() => {
-    setPlayerPage(1);
-  }, [playerSearch, playerRole, playerSort]);
+    let page = playerPage;
+    if (playerFilterKey.current !== nextPlayerFilterKey) {
+      playerFilterKey.current = nextPlayerFilterKey;
+      if (playerPage !== 1) {
+        setPlayerPage(1);
+        return;
+      }
+      page = 1;
+    }
+
+    if (
+      skipPlayersFirst.current &&
+      difficulty === initialDifficulty &&
+      page === 1 &&
+      debouncedPlayerSearch === "" &&
+      playerRole === "ALL" &&
+      playerSort.key === "score" &&
+      playerSort.dir === "desc"
+    ) {
+      skipPlayersFirst.current = false;
+      return;
+    }
+    skipPlayersFirst.current = false;
+
+    const id = ++playersReq.current;
+    setPlayersLoading(true);
+
+    fetchPlayers({
+      difficulty,
+      page,
+      search: debouncedPlayerSearch,
+      role: playerRole,
+      sort: playerSort,
+    })
+      .then((players) => {
+        if (id !== playersReq.current) return;
+        setPlayersData(players);
+      })
+      .catch(() => {
+        if (id !== playersReq.current) return;
+      })
+      .finally(() => {
+        if (id !== playersReq.current) return;
+        setPlayersLoading(false);
+      });
+  }, [
+    difficulty,
+    playerPage,
+    debouncedPlayerSearch,
+    playerRole,
+    playerSort,
+    initialDifficulty,
+    nextPlayerFilterKey,
+  ]);
 
   useEffect(() => {
-    setGamePage(1);
-  }, [gameSearch, gameResult, dateFrom, dateTo, gameSort]);
+    let page = gamePage;
+    if (gameFilterKey.current !== nextGameFilterKey) {
+      gameFilterKey.current = nextGameFilterKey;
+      if (gamePage !== 1) {
+        setGamePage(1);
+        return;
+      }
+      page = 1;
+    }
+
+    if (
+      skipGamesFirst.current &&
+      difficulty === initialDifficulty &&
+      page === 1 &&
+      debouncedGameSearch === "" &&
+      gameResult === "ALL" &&
+      dateFrom === "" &&
+      dateTo === "" &&
+      gameSort.key === "when" &&
+      gameSort.dir === "desc"
+    ) {
+      skipGamesFirst.current = false;
+      return;
+    }
+    skipGamesFirst.current = false;
+
+    const id = ++gamesReq.current;
+    setGamesLoading(true);
+
+    fetchGames({
+      difficulty,
+      page,
+      search: debouncedGameSearch,
+      result: gameResult,
+      from: dateFrom,
+      to: dateTo,
+      sort: gameSort,
+    })
+      .then((games) => {
+        if (id !== gamesReq.current) return;
+        setGamesData(games);
+      })
+      .catch(() => {
+        if (id !== gamesReq.current) return;
+      })
+      .finally(() => {
+        if (id !== gamesReq.current) return;
+        setGamesLoading(false);
+      });
+  }, [
+    difficulty,
+    gamePage,
+    debouncedGameSearch,
+    gameResult,
+    dateFrom,
+    dateTo,
+    gameSort,
+    initialDifficulty,
+    nextGameFilterKey,
+  ]);
 
   function onSelectDifficulty(level) {
     selectDifficulty(level);
@@ -329,7 +363,13 @@ export default function AdminPanel({
     setPlayerSort((prev) =>
       prev.key === key
         ? { key, dir: prev.dir === "asc" ? "desc" : "asc" }
-        : { key, dir: key === "player" || key === "email" || key === "role" ? "asc" : "desc" }
+        : {
+            key,
+            dir:
+              key === "player" || key === "email" || key === "role"
+                ? "asc"
+                : "desc",
+          }
     );
   }
 
@@ -362,6 +402,17 @@ export default function AdminPanel({
     setDateTo("");
     setGamePage(1);
   }
+
+  const pagePlayers = playersData?.players || [];
+  const playerTotalPages = playersData?.totalPages || 1;
+  const safePlayerPage = Math.min(playerPage, playerTotalPages);
+
+  const pageGames = gamesData?.games || [];
+  const gameTotalPages = gamesData?.totalPages || 1;
+  const safeGamePage = Math.min(gamePage, gameTotalPages);
+
+  const totalPlayers = summary?.totalPlayers ?? 0;
+  const totalGames = summary?.totalGames ?? 0;
 
   return (
     <div className="space-y-8 overflow-visible">
@@ -412,7 +463,11 @@ export default function AdminPanel({
           )}
         </div>
 
-        <div className="overflow-x-auto rounded-2xl border border-slate-700/70">
+        <div
+          className={`overflow-x-auto rounded-2xl border border-slate-700/70 ${
+            playersLoading ? "opacity-60" : ""
+          }`}
+        >
           <table className="min-w-full text-left text-sm">
             <thead className="bg-slate-900/80 text-slate-400">
               <tr>
@@ -458,6 +513,7 @@ export default function AdminPanel({
           page={safePlayerPage}
           totalPages={playerTotalPages}
           onChange={setPlayerPage}
+          disabled={playersLoading}
         />
       </section>
 
@@ -497,7 +553,11 @@ export default function AdminPanel({
           )}
         </div>
 
-        <div className="overflow-x-auto rounded-2xl border border-slate-700/70">
+        <div
+          className={`overflow-x-auto rounded-2xl border border-slate-700/70 ${
+            gamesLoading ? "opacity-60" : ""
+          }`}
+        >
           <table className="min-w-full text-left text-sm">
             <thead className="bg-slate-900/80 text-slate-400">
               <tr>
@@ -542,6 +602,7 @@ export default function AdminPanel({
           page={safeGamePage}
           totalPages={gameTotalPages}
           onChange={setGamePage}
+          disabled={gamesLoading}
         />
       </section>
     </div>

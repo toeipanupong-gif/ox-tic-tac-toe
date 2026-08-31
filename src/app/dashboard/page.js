@@ -3,6 +3,13 @@ import { auth } from "@/lib/auth";
 import { getOrCreateAllStats } from "@/lib/game/stats";
 import DashboardStats from "@/components/dashboard/DashboardStats";
 import StartGameButton from "@/components/game/StartGameButton";
+import { createPageMetadata } from "@/lib/seo";
+
+export const metadata = createPageMetadata({
+  title: "Dashboard",
+  description: "แดชบอร์ด OX Arena — ดูสถิติคะแนนและเริ่มเล่นกับ Bot",
+  path: "/dashboard",
+});
 
 export default async function DashboardPage() {
   const session = await auth();

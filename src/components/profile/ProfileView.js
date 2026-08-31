@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import DifficultyDropdown, {
   useStoredDifficulty,
 } from "@/components/ui/DifficultyDropdown";
 import { DEFAULT_DIFFICULTY } from "@/lib/game/difficulty";
 import { totalBonus } from "@/lib/game/score";
+import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = DEFAULT_PAGE_SIZE;
 
 function formatWinRate(wins, losses, draws) {
   const total = wins + losses + draws;
@@ -31,13 +32,61 @@ const STAT_CARDS = [
   { key: "winStreak", label: "Win Streak", color: "border-fuchsia-500/40 bg-fuchsia-500/10", valueClass: "text-fuchsia-300" },
 ];
 
+async function fetchGames(difficulty, page) {
+  const params = new URLSearchParams({
+    difficulty,
+    page: String(page),
+    pageSize: String(PAGE_SIZE),
+  });
+  const res = await fetch(`/api/profile/games?${params}`);
+  if (!res.ok) throw new Error("Failed to load games");
+  return res.json();
+}
+
 export default function ProfileView({
   user,
   statsByDifficulty,
-  gamesByDifficulty,
+  initialDifficulty = DEFAULT_DIFFICULTY,
+  initialGames,
 }) {
   const [difficulty, selectDifficulty] = useStoredDifficulty();
   const [page, setPage] = useState(1);
+  const [gamesData, setGamesData] = useState(initialGames);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const skipFirst = useRef(true);
+  const requestId = useRef(0);
+
+  useEffect(() => {
+    if (skipFirst.current && difficulty === initialDifficulty && page === 1) {
+      skipFirst.current = false;
+      return;
+    }
+    skipFirst.current = false;
+
+    const id = ++requestId.current;
+    setLoading(true);
+    setError(null);
+
+    fetchGames(difficulty, page)
+      .then((json) => {
+        if (id !== requestId.current) return;
+        setGamesData(json);
+      })
+      .catch((err) => {
+        if (id !== requestId.current) return;
+        setError(err.message || "โหลดไม่สำเร็จ");
+      })
+      .finally(() => {
+        if (id !== requestId.current) return;
+        setLoading(false);
+      });
+  }, [difficulty, page, initialDifficulty]);
+
+  function onSelectDifficulty(level) {
+    selectDifficulty(level);
+    setPage(1);
+  }
 
   const stat =
     statsByDifficulty[difficulty] ||
@@ -49,26 +98,9 @@ export default function ProfileView({
       winStreak: 0,
     };
 
-  const games =
-    gamesByDifficulty[difficulty] ||
-    gamesByDifficulty[DEFAULT_DIFFICULTY] ||
-    [];
-
-  const totalPages = Math.max(1, Math.ceil(games.length / PAGE_SIZE));
+  const pageGames = gamesData?.games || [];
+  const totalPages = gamesData?.totalPages || 1;
   const safePage = Math.min(page, totalPages);
-  const pageGames = games.slice(
-    (safePage - 1) * PAGE_SIZE,
-    safePage * PAGE_SIZE
-  );
-
-  useEffect(() => {
-    setPage(1);
-  }, [difficulty]);
-
-  function onSelectDifficulty(level) {
-    selectDifficulty(level);
-    setPage(1);
-  }
 
   const values = {
     score: stat.score,
@@ -111,7 +143,14 @@ export default function ProfileView({
 
       <div>
         <h2 className="mb-3 text-lg font-semibold">Game History</h2>
-        <div className="overflow-x-auto rounded-2xl border border-slate-700/70">
+        {error && (
+          <p className="mb-2 text-center text-sm text-rose-300">{error}</p>
+        )}
+        <div
+          className={`overflow-x-auto rounded-2xl border border-slate-700/70 ${
+            loading ? "opacity-60" : ""
+          }`}
+        >
           <table className="min-w-full text-left text-sm">
             <thead className="bg-slate-900/80 text-slate-400">
               <tr>
@@ -161,10 +200,10 @@ export default function ProfileView({
           <div className="flex items-center justify-center gap-2 pt-4">
             <button
               type="button"
-              disabled={safePage <= 1}
+              disabled={safePage <= 1 || loading}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               className={`cursor-pointer rounded-lg border border-slate-700/70 px-3 py-1.5 text-sm ${
-                safePage <= 1
+                safePage <= 1 || loading
                   ? "pointer-events-none opacity-40"
                   : "text-slate-300 hover:border-teal-500/50 hover:text-teal-200"
               }`}
@@ -176,10 +215,10 @@ export default function ProfileView({
             </span>
             <button
               type="button"
-              disabled={safePage >= totalPages}
+              disabled={safePage >= totalPages || loading}
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               className={`cursor-pointer rounded-lg border border-slate-700/70 px-3 py-1.5 text-sm ${
-                safePage >= totalPages
+                safePage >= totalPages || loading
                   ? "pointer-events-none opacity-40"
                   : "text-slate-300 hover:border-teal-500/50 hover:text-teal-200"
               }`}

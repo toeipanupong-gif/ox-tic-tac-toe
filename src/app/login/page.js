@@ -1,4 +1,11 @@
 import GoogleSignInButton from "@/components/auth/GoogleSignInButton";
+import { createPageMetadata } from "@/lib/seo";
+
+export const metadata = createPageMetadata({
+  title: "Login",
+  description: "เข้าสู่ระบบ OX Arena ด้วย Google เพื่อเริ่มเล่น Tic-Tac-Toe",
+  path: "/login",
+});
 
 export default function LoginPage() {
   return (

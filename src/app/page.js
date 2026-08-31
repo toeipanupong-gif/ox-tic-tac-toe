@@ -1,4 +1,11 @@
 import GoogleSignInButton from "@/components/auth/GoogleSignInButton";
+import { createPageMetadata } from "@/lib/seo";
+
+export const metadata = createPageMetadata({
+  path: "/",
+  description:
+    "OX Arena — เล่น Tic-Tac-Toe กับ Bot วัดฝีมือ จัดอันดับ Leaderboard",
+});
 
 const marks = [
   { char: "X", className: "left-[6%] top-[12%] text-6xl text-teal-400/25 ox-float-a" },

@@ -1,5 +1,6 @@
 import { Chakra_Petch } from "next/font/google";
 import NavBar from "@/components/auth/NavBar";
+import { siteConfig } from "@/lib/seo";
 import "./globals.css";
 
 const chakraPetch = Chakra_Petch({
@@ -9,8 +10,58 @@ const chakraPetch = Chakra_Petch({
 });
 
 export const metadata = {
-  title: "OX Arena — Tic-Tac-Toe",
-  description: "เล่น Tic-Tac-Toe กับ Bot พร้อมระบบคะแนน Leaderboard และ Admin",
+  metadataBase: siteConfig.url,
+  title: {
+    default: siteConfig.title,
+    template: `%s | ${siteConfig.name}`,
+  },
+  description: siteConfig.description,
+  applicationName: siteConfig.name,
+  keywords: [
+    "OX Arena",
+    "Tic-Tac-Toe",
+    "OX",
+    "เกม OX",
+    "leaderboard",
+    "เล่นกับ Bot",
+  ],
+  authors: [{ name: siteConfig.name }],
+  creator: siteConfig.name,
+  icons: {
+    icon: [
+      { url: "/favicon.png", type: "image/png", sizes: "512x512" },
+    ],
+    apple: [
+      { url: "/favicon.png", type: "image/png", sizes: "512x512" },
+    ],
+    shortcut: ["/favicon.png"],
+  },
+  openGraph: {
+    type: "website",
+    locale: siteConfig.locale,
+    url: siteConfig.url,
+    siteName: siteConfig.name,
+    title: siteConfig.title,
+    description: siteConfig.description,
+    images: [
+      {
+        url: siteConfig.ogImage,
+        width: 512,
+        height: 512,
+        alt: siteConfig.name,
+      },
+    ],
+  },
+  twitter: {
+    card: "summary",
+    title: siteConfig.title,
+    description: siteConfig.description,
+    images: [siteConfig.ogImage],
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
 export default function RootLayout({ children }) {
