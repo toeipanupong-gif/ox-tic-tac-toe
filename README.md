@@ -1,0 +1,131 @@
+# OX Arena — Tic-Tac-Toe Web App
+
+Next.js web application สำหรับเล่น Tic-Tac-Toe กับ Bot (Minimax) พร้อม Google Login, Score, Leaderboard และ Admin Dashboard
+
+## Tech Stack
+
+- Next.js (App Router) + JavaScript
+- Tailwind CSS
+- Auth.js (Google OAuth 2.0 / OIDC)
+- Prisma + SQLite
+- Vitest + Playwright
+
+## Setup
+
+### 1. ติดตั้ง dependencies
+
+ใช้ **npm หรือ yarn ก็ได้** — แต่เลือกอย่างเดียวต่อเครื่อง (อย่ามีทั้ง `package-lock.json` และ `yarn.lock` พร้อมกัน)
+
+**npm**
+```bash
+# ถ้าเคยใช้ yarn มาก่อน ให้ลบ yarn.lock ก่อน
+rm yarn.lock   # Windows: del yarn.lock
+npm install
+```
+
+**yarn**
+```bash
+# ถ้าเคยใช้ npm มาก่อน ให้ลบ package-lock.json ก่อน
+rm package-lock.json   # Windows: del package-lock.json
+yarn
+```
+
+> Scripts ใช้ `node scripts/run.mjs` ตั้ง `DATABASE_URL` ข้าม Windows/macOS/Linux — ใช้ได้ทั้ง `npm run …` และ `yarn …`
+
+### 2. สร้างไฟล์ `.env`
+
+คัดลอกจาก `.env.example`:
+
+```bash
+cp .env.example .env
+```
+
+### 3. ตั้งค่า Google OAuth
+
+1. ไปที่ [Google Cloud Console](https://console.cloud.google.com/)
+2. สร้าง Project ใหม่ (หรือเลือกที่มีอยู่)
+3. เปิดใช้งาน **Google Auth Platform / OAuth consent screen**
+4. สร้าง **OAuth 2.0 Client ID** แบบ Web application
+5. กำหนด Authorized JavaScript origins เช่น:
+   - `http://localhost:3000`
+6. กำหนด Authorized redirect URIs เช่น:
+   - `http://localhost:3000/api/auth/callback/google`
+7. นำ Client ID / Client Secret ใส่ใน `.env`:
+
+```env
+AUTH_GOOGLE_ID="your-client-id"
+AUTH_GOOGLE_SECRET="your-client-secret"
+```
+
+8. สร้าง `AUTH_SECRET`:
+
+```bash
+openssl rand -base64 32
+```
+
+9. กำหนด Admin email:
+
+```env
+ADMIN_EMAIL="your-admin@gmail.com"
+```
+
+ผู้ใช้ที่ Login ด้วย email ตรงกับ `ADMIN_EMAIL` จะได้ role `ADMIN` อัตโนมัติ
+
+### 4. สร้าง Database
+
+```bash
+npm run db:migrate
+# หรือ
+yarn db:migrate
+```
+
+### 5. รันแอป
+
+```bash
+npm run dev
+# หรือ
+yarn dev
+```
+
+เปิด [http://localhost:3000](http://localhost:3000)
+
+> หมายเหตุ: โปรเจกต์นี้ใช้ SQLite (`DATABASE_URL=file:./dev.db`) ตาม Technical Design
+
+## Scripts
+
+| Command (npm / yarn) | Description |
+| --- | --- |
+| `npm run dev` / `yarn dev` | รัน development server |
+| `npm run build` / `yarn build` | build production |
+| `npm run start` / `yarn start` | รัน production server |
+| `npm test` / `yarn test` | unit tests (Vitest) |
+| `npm run test:e2e` / `yarn test:e2e` | e2e tests (Playwright) |
+| `npm run db:migrate` / `yarn db:migrate` | Prisma migrate |
+
+## Features
+
+- Login ด้วย Google ก่อนเล่น
+- ผู้เล่น vs Bot (Minimax)
+- คะแนน: ชนะ +1 / แพ้ -1 / เสมอ 0
+- ชนะติดกัน 3 ครั้ง: Bonus +1 แล้วรีเซ็ต streak
+- Game History, Leaderboard, Admin Dashboard
+- Server เป็นคนตัดสินคะแนน (Client ส่งแค่ตำแหน่งเดิน)
+
+## Pages
+
+| Path | Description |
+| --- | --- |
+| `/` | Landing |
+| `/login` | Login |
+| `/dashboard` | สถิติผู้เล่น |
+| `/game` | เล่นเกม |
+| `/leaderboard` | อันดับคะแนน |
+| `/profile` | โปรไฟล์ + ประวัติ |
+| `/admin` | Admin เท่านั้น |
+
+## Security Notes
+
+- ห้าม commit `.env`
+- ห้าม commit `prisma/dev.db`
+- Admin ตรวจจาก `ADMIN_EMAIL` ฝั่ง server เท่านั้น
+- Score คำนวณใน API `/api/game/move` ภายใน transaction
