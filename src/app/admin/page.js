@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { auth } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import AdminPanel from "@/components/admin/AdminPanel";
 import { DEFAULT_DIFFICULTY } from "@/lib/game/difficulty";
@@ -15,8 +15,8 @@ export const metadata = createPageMetadata({
 });
 
 export default async function AdminPage() {
-  const session = await auth();
-  if (!session?.user?.id || session.user.role !== "ADMIN") {
+  const admin = await requireAdmin();
+  if (!admin) {
     redirect("/dashboard");
   }
 

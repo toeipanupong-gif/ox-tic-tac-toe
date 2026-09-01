@@ -126,45 +126,36 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
       return true;
     },
-    async jwt({ token, user, trigger }) {
+    async jwt({ token, user }) {
       if (user) {
         const dbUser = await resolveDbUser(user);
         if (!dbUser?.id) {
           return { error: "UserNotFound" };
         }
 
-        let role = dbUser.role ?? "USER";
         try {
-          const synced = await syncAdminRole({
+          await syncAdminRole({
             id: dbUser.id,
             email: user.email ?? dbUser.email,
           });
-          if (synced?.role) role = synced.role;
           await ensureDefaultStats(dbUser.id);
           await ensureUserPiiEncrypted(dbUser.id);
         } catch (error) {
           console.error("[auth] jwt user sync failed", error);
         }
 
-        token.id = dbUser.id;
-        token.role = role;
-        delete token.error;
-        if (user.name) token.name = user.name;
-        if (user.email) token.email = user.email;
-        return token;
+        return { id: dbUser.id };
       }
 
-      if (token.id) {
+      if (token?.id) {
         const dbUser = await prisma.user.findUnique({
           where: { id: token.id },
-          select: { id: true, role: true },
+          select: { id: true },
         });
         if (!dbUser) {
           return { error: "UserNotFound" };
         }
-        if (trigger === "update") {
-          token.role = dbUser.role;
-        }
+        return { id: token.id };
       }
 
       return token;
@@ -173,20 +164,32 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (token?.error === "UserNotFound" || !token?.id) {
         return null;
       }
-      if (session.user) {
-        session.user.id = token.id;
-        session.user.role = token.role ?? "USER";
-        if (token.name) {
-          session.user.name = isPiiEncrypted(token.name)
-            ? decryptPii(token.name)
-            : token.name;
-        }
-        if (token.email) {
-          session.user.email = isPiiEncrypted(token.email)
-            ? decryptPii(token.email)
-            : token.email;
-        }
+
+      const dbUser = await prisma.user.findUnique({
+        where: { id: token.id },
+        select: { id: true, role: true, name: true, email: true },
+      });
+      if (!dbUser) return null;
+
+      session.user.id = dbUser.id;
+      session.user.role = dbUser.role ?? "USER";
+
+      if (dbUser.name) {
+        session.user.name = isPiiEncrypted(dbUser.name)
+          ? decryptPii(dbUser.name)
+          : dbUser.name;
+      } else {
+        delete session.user.name;
       }
+
+      if (dbUser.email) {
+        session.user.email = isPiiEncrypted(dbUser.email)
+          ? decryptPii(dbUser.email)
+          : dbUser.email;
+      } else {
+        delete session.user.email;
+      }
+
       return session;
     },
   },
@@ -217,8 +220,15 @@ export async function requireUser() {
 
 export async function requireAdmin() {
   const user = await requireUser();
-  if (!user || user.role !== "ADMIN") return null;
-  return user;
+  if (!user) return null;
+
+  const dbUser = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { role: true },
+  });
+  if (dbUser?.role !== "ADMIN") return null;
+
+  return { ...user, role: "ADMIN" };
 }
 
 /** หา user จาก plaintext email ผ่าน emailLookup */

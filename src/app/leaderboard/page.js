@@ -4,7 +4,8 @@ import LeaderboardView from "@/components/leaderboard/LeaderboardView";
 import { DEFAULT_DIFFICULTY } from "@/lib/game/difficulty";
 import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
 import { createPageMetadata } from "@/lib/seo";
-import { revealUserPii } from "@/lib/pii";
+import { mapLeaderboardPlayer } from "@/lib/leaderboard";
+import { findSelfRank } from "@/lib/leaderboard-server";
 
 export const metadata = createPageMetadata({
   title: "Leaderboard",
@@ -16,6 +17,7 @@ export default async function LeaderboardPage() {
   const session = await auth();
   const difficulty = DEFAULT_DIFFICULTY;
   const pageSize = DEFAULT_PAGE_SIZE;
+  const currentUserId = session?.user?.id ?? null;
 
   const where = {
     difficulty,
@@ -27,7 +29,7 @@ export default async function LeaderboardPage() {
     prisma.userStat.findMany({
       where,
       include: {
-        user: { select: { id: true, name: true, email: true } },
+        user: { select: { id: true, name: true } },
       },
       orderBy: [
         { score: "desc" },
@@ -39,70 +41,13 @@ export default async function LeaderboardPage() {
     }),
   ]);
 
-  const players = stats.map((s) => {
-    const user = revealUserPii(s.user);
-    return {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      score: s.score,
-      wins: s.wins,
-      losses: s.losses,
-      draws: s.draws,
-    };
-  });
+  const players = stats.map((stat) =>
+    mapLeaderboardPlayer(stat, { isSelf: stat.user.id === currentUserId })
+  );
 
-  let self = null;
-  const currentUserId = session?.user?.id ?? null;
-  if (currentUserId) {
-    const selfStat = await prisma.userStat.findUnique({
-      where: {
-        userId_difficulty: { userId: currentUserId, difficulty },
-      },
-      include: {
-        user: { select: { id: true, name: true, email: true, role: true } },
-      },
-    });
-    if (selfStat?.user?.role === "USER") {
-      const betterCount = await prisma.userStat.count({
-        where: {
-          difficulty,
-          user: { role: "USER" },
-          OR: [
-            { score: { gt: selfStat.score } },
-            {
-              AND: [
-                { score: selfStat.score },
-                { wins: { gt: selfStat.wins } },
-              ],
-            },
-            {
-              AND: [
-                { score: selfStat.score },
-                { wins: selfStat.wins },
-                { losses: { lt: selfStat.losses } },
-              ],
-            },
-          ],
-        },
-      });
-      self = {
-        rank: betterCount + 1,
-        player: (() => {
-          const user = revealUserPii(selfStat.user);
-          return {
-            id: user.id,
-            name: user.name,
-            email: user.email,
-            score: selfStat.score,
-            wins: selfStat.wins,
-            losses: selfStat.losses,
-            draws: selfStat.draws,
-          };
-        })(),
-      };
-    }
-  }
+  const self = currentUserId
+    ? await findSelfRank(currentUserId, difficulty)
+    : null;
 
   return (
     <section className="space-y-4 sm:space-y-6">

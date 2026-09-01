@@ -5,14 +5,37 @@ import {
   toStoredUserPii,
 } from "@/lib/pii";
 
+const OAUTH_TOKEN_FIELDS = [
+  "refresh_token",
+  "access_token",
+  "expires_at",
+  "token_type",
+  "scope",
+  "id_token",
+  "session_state",
+];
+
+function stripOAuthTokens(account) {
+  const safe = { ...account };
+  for (const field of OAUTH_TOKEN_FIELDS) {
+    delete safe[field];
+  }
+  return safe;
+}
+
 /**
  * Prisma adapter ที่เก็บ name/email เป็น PII และ lookup ด้วย emailLookup
+ * ไม่เก็บ OAuth token — ใช้ JWT session อย่างเดียว
  */
 export function createPiiPrismaAdapter(prisma) {
   const base = PrismaAdapter(prisma);
 
   return {
     ...base,
+
+    async linkAccount(account) {
+      return base.linkAccount(stripOAuthTokens(account));
+    },
 
     async createUser(user) {
       const data = toStoredUserPii({

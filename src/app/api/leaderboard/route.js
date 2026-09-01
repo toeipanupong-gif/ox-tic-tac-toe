@@ -3,56 +3,8 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { normalizeDifficulty } from "@/lib/game/difficulty";
 import { parsePageParams, paginatedResult } from "@/lib/pagination";
-import { revealUserPii } from "@/lib/pii";
-
-function mapPlayer(stat) {
-  const user = revealUserPii(stat.user);
-  return {
-    id: user.id,
-    name: user.name,
-    email: user.email,
-    score: stat.score,
-    wins: stat.wins,
-    losses: stat.losses,
-    draws: stat.draws,
-  };
-}
-
-async function findSelfRank(userId, difficulty) {
-  const selfStat = await prisma.userStat.findUnique({
-    where: { userId_difficulty: { userId, difficulty } },
-    include: {
-      user: { select: { id: true, name: true, email: true, role: true } },
-    },
-  });
-
-  if (!selfStat || selfStat.user.role !== "USER") return null;
-
-  const betterCount = await prisma.userStat.count({
-    where: {
-      difficulty,
-      user: { role: "USER" },
-      OR: [
-        { score: { gt: selfStat.score } },
-        {
-          AND: [{ score: selfStat.score }, { wins: { gt: selfStat.wins } }],
-        },
-        {
-          AND: [
-            { score: selfStat.score },
-            { wins: selfStat.wins },
-            { losses: { lt: selfStat.losses } },
-          ],
-        },
-      ],
-    },
-  });
-
-  return {
-    rank: betterCount + 1,
-    player: mapPlayer(selfStat),
-  };
-}
+import { mapLeaderboardPlayer } from "@/lib/leaderboard";
+import { findSelfRank } from "@/lib/leaderboard-server";
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
@@ -69,7 +21,7 @@ export async function GET(request) {
     prisma.userStat.findMany({
       where,
       include: {
-        user: { select: { id: true, name: true, email: true } },
+        user: { select: { id: true, name: true } },
       },
       orderBy: [
         { score: "desc" },
@@ -83,12 +35,15 @@ export async function GET(request) {
     auth(),
   ]);
 
-  const players = stats.map(mapPlayer);
+  const currentUserId = session?.user?.id ?? null;
+  const players = stats.map((stat) =>
+    mapLeaderboardPlayer(stat, { isSelf: stat.user.id === currentUserId })
+  );
   const result = paginatedResult({ items: players, total, page, pageSize });
 
   let self = null;
-  if (session?.user?.id) {
-    self = await findSelfRank(session.user.id, difficulty);
+  if (currentUserId) {
+    self = await findSelfRank(currentUserId, difficulty);
   }
 
   return NextResponse.json({
@@ -98,6 +53,6 @@ export async function GET(request) {
     pageSize: result.pageSize,
     totalPages: result.totalPages,
     self,
-    currentUserId: session?.user?.id ?? null,
+    currentUserId,
   });
 }

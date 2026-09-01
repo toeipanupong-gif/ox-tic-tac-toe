@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import Board from "./Board";
 import ScoreBoard from "./ScoreBoard";
 import ResultOverlay from "./ResultOverlay";
+import RateLimitModal from "./RateLimitModal";
 import { checkWinner } from "@/lib/game/game-engine";
 import { difficultyLabel, normalizeDifficulty } from "@/lib/game/difficulty";
 
@@ -16,6 +17,20 @@ function sleep(ms) {
 
 function botThinkDelay() {
   return 650 + Math.floor(Math.random() * 450);
+}
+
+function readGameApiError(res, data, fallback) {
+  if (res.status === 429 && data?.code === "RATE_LIMITED") {
+    return {
+      kind: "rateLimit",
+      message: data.message,
+      retryAfterSeconds: data.retryAfterSeconds ?? 0,
+    };
+  }
+  return {
+    kind: "error",
+    message: data?.error || fallback,
+  };
 }
 
 export default function GameClient({
@@ -34,6 +49,7 @@ export default function GameClient({
   const [botThinking, setBotThinking] = useState(false);
   const [lastMoveIndex, setLastMoveIndex] = useState(null);
   const [showResult, setShowResult] = useState(false);
+  const [rateLimitNotice, setRateLimitNotice] = useState(null);
   const [isPending, startTransition] = useTransition();
   const boardBeforeMove = useRef(EMPTY_BOARD);
 
@@ -51,7 +67,13 @@ export default function GameClient({
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || "เริ่มเกมไม่สำเร็จ");
+        const apiError = readGameApiError(res, data, "เริ่มเกมไม่สำเร็จ");
+        if (apiError.kind === "rateLimit") {
+          setRateLimitNotice(apiError);
+          setError("");
+        } else {
+          setError(apiError.message);
+        }
         return;
       }
       setBoard(data.board);
@@ -90,7 +112,13 @@ export default function GameClient({
         setBoard(boardBeforeMove.current);
         setLastMoveIndex(null);
         setBotThinking(false);
-        setError(data.error || "เดินหมากไม่สำเร็จ");
+        const apiError = readGameApiError(res, data, "เดินหมากไม่สำเร็จ");
+        if (apiError.kind === "rateLimit") {
+          setRateLimitNotice(apiError);
+          setError("");
+        } else {
+          setError(apiError.message);
+        }
         return;
       }
 
@@ -202,6 +230,14 @@ export default function GameClient({
           status={status}
           scoreResult={scoreResult}
           onClose={() => setShowResult(false)}
+        />
+      )}
+
+      {rateLimitNotice && (
+        <RateLimitModal
+          message={rateLimitNotice.message}
+          retryAfterSeconds={rateLimitNotice.retryAfterSeconds}
+          onClose={() => setRateLimitNotice(null)}
         />
       )}
     </div>

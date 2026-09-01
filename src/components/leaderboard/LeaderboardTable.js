@@ -8,22 +8,8 @@ function winRate(wins, losses, draws) {
   return `${((wins / total) * 100).toFixed(1)}%`;
 }
 
-function maskName(name) {
-  if (!name?.trim()) return "Player";
-  return name
-    .trim()
-    .split(/\s+/)
-    .map((word) => {
-      if (word.length <= 1) return "*";
-      return `${word[0]}${"*".repeat(Math.min(3, word.length - 1))}`;
-    })
-    .join(" ");
-}
-
-function displayName(player, isSelf) {
-  if (isSelf) return player.name || player.email || "Player";
-  if (!player.name) return "Player";
-  return maskName(player.name);
+function displayName(player) {
+  return player.name || "Player";
 }
 
 function PlayerRow({ player, rank, isSelf }) {
@@ -36,7 +22,7 @@ function PlayerRow({ player, rank, isSelf }) {
       </td>
       <td className="max-w-[8rem] truncate px-3 py-2.5 sm:max-w-none sm:px-4 sm:py-3">
         <span className={isSelf ? "font-semibold text-teal-200" : ""}>
-          {displayName(player, isSelf)}
+          {displayName(player)}
           {isSelf ? " (คุณ)" : ""}
         </span>
       </td>

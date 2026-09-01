@@ -12,17 +12,18 @@ export default auth((req) => {
     return NextResponse.redirect(new URL("/dashboard", req.nextUrl.origin));
   }
 
-  if (!isLoggedIn && ["/dashboard", "/game", "/profile", "/admin"].some(
-    (path) => pathname === path || pathname.startsWith(`${path}/`)
-  )) {
+  if (
+    !isLoggedIn &&
+    ["/dashboard", "/game", "/profile", "/admin"].some(
+      (path) => pathname === path || pathname.startsWith(`${path}/`)
+    )
+  ) {
     const loginUrl = new URL("/login", req.nextUrl.origin);
     loginUrl.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(loginUrl);
   }
 
-  if (pathname.startsWith("/admin") && req.auth?.user?.role !== "ADMIN") {
-    return NextResponse.redirect(new URL("/dashboard", req.nextUrl.origin));
-  }
+  // /admin role ตรวจที่ server-side (requireAdmin) — ไม่ใช้ JWT role ที่ edge
 
   return NextResponse.next();
 });

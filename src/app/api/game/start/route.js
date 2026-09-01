@@ -10,6 +10,7 @@ import {
 } from "@/lib/game/game-engine";
 import { normalizeDifficulty } from "@/lib/game/difficulty";
 import { getUserStat, UserNotFoundError } from "@/lib/game/stats";
+import { enforceGameRateLimit } from "@/lib/game-api";
 
 const bodySchema = z.object({
   difficulty: z.enum(["EASY", "NORMAL", "HARD"]).optional(),
@@ -39,6 +40,10 @@ export async function POST(request) {
   }
 
   const userId = dbUser.id;
+
+  const rateLimited = await enforceGameRateLimit(userId, "game:start");
+  if (rateLimited) return rateLimited;
+
   const board = createBoard();
 
   try {
