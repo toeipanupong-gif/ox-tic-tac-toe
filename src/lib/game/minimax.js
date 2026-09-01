@@ -69,14 +69,11 @@ function findImmediateWin(board, symbol) {
   return null;
 }
 
-function getHardMove(board) {
+/** Normal: ชนะทันทีถ้าได้ — นอกนั้นไม่ป้องกัน (สุ่ม) */
+function getNormalMove(board) {
   const winMove = findImmediateWin(board, BOT);
   if (winMove !== null) return winMove;
-
-  const blockMove = findImmediateWin(board, PLAYER);
-  if (blockMove !== null) return blockMove;
-
-  return getMinimaxMove(board);
+  return getEasyMove(board);
 }
 
 function getEasyMove(board) {
@@ -85,10 +82,19 @@ function getEasyMove(board) {
   return moves[Math.floor(Math.random() * moves.length)];
 }
 
+/** หมากแรกของบอท = ยังไม่มี O บนกระดาน */
+function isBotOpeningMove(board) {
+  return !board.some((cell) => cell === BOT);
+}
+
 /** @param {Array} board @param {"EASY"|"NORMAL"|"HARD"} [difficulty] */
 export function getBotMove(board, difficulty = "NORMAL") {
   const level = normalizeDifficulty(difficulty);
   if (level === "EASY") return getEasyMove(board);
-  if (level === "HARD") return getHardMove(board);
-  return getMinimaxMove(board);
+
+  // Normal / Hard: หมากแรกสุ่ม เพื่อเปิดช่องให้ผู้เล่นมีโอกาสชนะ
+  if (isBotOpeningMove(board)) return getEasyMove(board);
+
+  if (level === "HARD") return getMinimaxMove(board);
+  return getNormalMove(board);
 }

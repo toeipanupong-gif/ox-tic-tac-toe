@@ -159,7 +159,7 @@ yarn dev
 ## Features
 
 - Login ด้วย Google ก่อนเล่น
-- ผู้เล่น vs Bot 3 ระดับ: Easy (สุ่ม) / Normal (Minimax) / Hard (มีโอกาสชนะจะชนะก่อน ไม่ป้องกัน)
+- ผู้เล่น vs Bot 3 ระดับ: Easy (สุ่มทุกตา) / Normal (ชนะทันทีถ้าได้ / นอกนั้นไม่ป้องกัน) / Hard (Minimax เต็มรูปแบบ) โดย Normal และ Hard หมากแรกของบอทจะสุ่ม เพื่อเปิดโอกาสให้ผู้เล่นมีโอกาสชนะ
 - คะแนนแยกตามระดับ (UserStat): ชนะ +1 / แพ้ -1 / เสมอ 0
 - ชนะติดกัน 3 ครั้ง: Bonus +1 แล้วรีเซ็ต Streak
 - Game History, Leaderboard, Admin Dashboard (กรองตามระดับได้)

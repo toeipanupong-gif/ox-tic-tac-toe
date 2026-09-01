@@ -36,31 +36,45 @@ describe("game-engine", () => {
 });
 
 describe("minimax", () => {
-  it("normal blocks player win", () => {
-    const board = ["X", "X", null, null, "O", null, null, null, null];
-    expect(getBotMove(board, "NORMAL")).toBe(2);
-  });
-
-  it("normal takes winning move", () => {
-    const board = ["O", "O", null, "X", "X", null, null, null, null];
-    expect(getBotMove(board, "NORMAL")).toBe(2);
-  });
-
-  it("hard takes win even when player also threatens", () => {
-    // Bot ชนะที่ 6, ผู้เล่นขู่ที่ 7 — Hard ต้องเลือก 6
-    const board = ["O", "X", null, "O", "X", null, null, null, null];
-    expect(getBotMove(board, "HARD")).toBe(6);
-  });
-
-  it("hard blocks when no immediate win", () => {
+  it("hard blocks player win", () => {
     const board = ["X", "X", null, null, "O", null, null, null, null];
     expect(getBotMove(board, "HARD")).toBe(2);
+  });
+
+  it("hard takes winning move", () => {
+    const board = ["O", "O", null, "X", "X", null, null, null, null];
+    expect(getBotMove(board, "HARD")).toBe(2);
+  });
+
+  it("normal takes win even when player also threatens", () => {
+    // Bot ชนะที่ 6, ผู้เล่นขู่ที่ 7 — Normal ต้องเลือก 6 (ชนะก่อน ไม่ป้องกัน)
+    const board = ["O", "X", null, "O", "X", null, null, null, null];
+    expect(getBotMove(board, "NORMAL")).toBe(6);
+  });
+
+  it("normal does not always block when no immediate win", () => {
+    // ผู้เล่นขู่ที่ 2 — Normal ไม่บังคับบล็อก แค่สุ่มช่องว่าง
+    const board = ["X", "X", null, null, "O", null, null, null, null];
+    const move = getBotMove(board, "NORMAL");
+    expect([2, 3, 5, 6, 7, 8]).toContain(move);
   });
 
   it("easy returns an available move", () => {
     const board = ["X", null, null, null, "O", null, null, null, null];
     const move = getBotMove(board, "EASY");
     expect([1, 2, 3, 5, 6, 7, 8]).toContain(move);
+  });
+
+  it("normal opening move is random among empty cells", () => {
+    const board = ["X", null, null, null, null, null, null, null, null];
+    const move = getBotMove(board, "NORMAL");
+    expect([1, 2, 3, 4, 5, 6, 7, 8]).toContain(move);
+  });
+
+  it("hard opening move is random among empty cells", () => {
+    const board = [null, null, null, null, "X", null, null, null, null];
+    const move = getBotMove(board, "HARD");
+    expect([0, 1, 2, 3, 5, 6, 7, 8]).toContain(move);
   });
 });
 
