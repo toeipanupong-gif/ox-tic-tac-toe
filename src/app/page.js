@@ -15,7 +15,7 @@ const marks = [
   { char: "X", className: "right-[8%] top-[12%] text-3xl text-amber-300/25 ox-float-c lg:right-auto lg:left-[18%] lg:top-auto lg:bottom-[16%] lg:text-9xl lg:text-amber-300/40", style: { animationDelay: "-2.4s" } },
   { char: "O", className: "left-[10%] bottom-[16%] text-xl text-teal-300/30 ox-float-a lg:left-auto lg:right-[18%] lg:bottom-[20%] lg:text-4xl lg:text-teal-300/55", style: { animationDelay: "-0.6s" } },
   { char: "X", className: "left-[36%] bottom-[28%] text-2xl text-cyan-400/25 ox-float-b lg:left-[44%] lg:bottom-auto lg:top-[6%] lg:text-3xl lg:text-cyan-400/50", style: { animationDelay: "-3.1s" } },
-  { char: "O", className: "right-[10%] bottom-[12%] text-5xl text-amber-200/20 ox-float-c lg:right-auto lg:left-[2%] lg:bottom-auto lg:top-[60%] lg:text-7xl lg:text-amber-200/40", style: { animationDelay: "-1.8s" } },
+  { char: "O", className: "right-[10%] bottom-[12%] text-5xl text-amber-200/20 ox-float-c lg:right-auto lg:left-[3%] lg:bottom-auto lg:top-[60%] lg:text-7xl lg:text-amber-200/40", style: { animationDelay: "-1.8s" } },
   { char: "X", className: "left-[20%] top-[15%] text-5xl text-teal-200/20 ox-float-a lg:left-auto lg:right-[5%] lg:top-[46%] lg:text-[7.5rem] lg:text-teal-200/35", style: { animationDelay: "-4s" } },
   { char: "O", className: "right-[20%] bottom-[22%] text-2xl text-cyan-200/25 ox-float-b lg:right-auto lg:left-[58%] lg:bottom-[8%] lg:text-6xl lg:text-cyan-200/45", style: { animationDelay: "-2s" } },
   { char: "X", className: "right-[30%] top-[5%] text-xl text-teal-300/25 ox-float-c lg:right-auto lg:left-[30%] lg:top-[15%] lg:text-2xl lg:text-teal-300/45", style: { animationDelay: "-0.9s" } },
