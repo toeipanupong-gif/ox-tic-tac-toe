@@ -9,18 +9,18 @@ export default function StartGameButton() {
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
 
-  useEffect(() => {
-    if (!open) return;
+  // useEffect(() => {
+  //   if (!open) return;
 
-    function onPointerDown(event) {
-      if (rootRef.current && !rootRef.current.contains(event.target)) {
-        setOpen(false);
-      }
-    }
+  //   function onPointerDown(event) {
+  //     if (rootRef.current && !rootRef.current.contains(event.target)) {
+  //       setOpen(false);
+  //     }
+  //   }
 
-    document.addEventListener("pointerdown", onPointerDown);
-    return () => document.removeEventListener("pointerdown", onPointerDown);
-  }, [open]);
+  //   document.addEventListener("pointerdown", onPointerDown);
+  //   return () => document.removeEventListener("pointerdown", onPointerDown);
+  // }, [open]);
 
   function play(level) {
     setOpen(false);
