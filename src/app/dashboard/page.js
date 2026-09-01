@@ -68,13 +68,13 @@ export default async function DashboardPage() {
 
       <div className="flex flex-col items-center justify-center gap-6 py-6 text-center sm:gap-8 sm:py-10">
         <div
-          className="play-mascot relative flex h-36 w-48 items-center justify-center sm:h-48 sm:w-64"
+          className="play-mascot relative flex h-44 w-56 items-center justify-center sm:h-52 sm:w-72 md:h-56 md:w-80 lg:h-72 lg:w-60"
           aria-hidden
         >
-          <span className="play-mascot-x absolute left-0 top-0 font-[family-name:var(--font-display)] text-7xl font-extrabold text-teal-400 sm:text-9xl">
+          <span className="play-mascot-x absolute -left-2 -top-5 sm:-left-3 sm:-top-6 md:-left-2 md:-top-5 lg:left-0 lg:top-0 font-[family-name:var(--font-display)] text-[10.5rem] font-extrabold leading-none text-teal-400 sm:text-[12rem] md:text-[13rem] lg:text-[11rem]">
             O
           </span>
-          <span className="play-mascot-o absolute bottom-0 right-0 font-[family-name:var(--font-display)] text-7xl font-extrabold text-cyan-300 sm:text-9xl">
+          <span className="play-mascot-o absolute bottom-0 right-0 font-[family-name:var(--font-display)] text-[10.5rem] font-extrabold leading-none text-cyan-300 sm:text-[12rem] md:text-[13rem] lg:text-[11rem]">
             X
           </span>
         </div>
