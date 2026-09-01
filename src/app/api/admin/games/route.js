@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { normalizeDifficulty } from "@/lib/game/difficulty";
 import { parsePageParams, paginatedResult } from "@/lib/pagination";
+import { ADMIN_IN_MEMORY_SCAN_LIMIT } from "@/lib/admin-limits";
 import { revealUserPii } from "@/lib/pii";
 
 const SORT_FIELDS = new Set([
@@ -95,6 +96,7 @@ export async function GET(request) {
         user: { select: { name: true, email: true } },
       },
       orderBy: orderByFor("when", "desc"),
+      take: ADMIN_IN_MEMORY_SCAN_LIMIT,
     });
 
     let items = games.map((g) => ({

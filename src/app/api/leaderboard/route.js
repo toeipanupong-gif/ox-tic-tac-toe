@@ -16,35 +16,30 @@ export async function GET(request) {
     user: { role: "USER" },
   };
 
-  const [total, stats, session] = await Promise.all([
+  const session = await auth();
+  const currentUserId = session?.user?.id ?? null;
+
+  const [total, stats, self] = await Promise.all([
     prisma.userStat.count({ where }),
     prisma.userStat.findMany({
       where,
       include: {
-        user: { select: { id: true, name: true } },
+        user: { select: { id: true, name: true, maskedName: true } },
       },
-      orderBy: [
-        { score: "desc" },
-        { wins: "desc" },
-        { losses: "asc" },
-        { user: { name: "asc" } },
-      ],
+      // ไม่ orderBy user.name — ciphertext ไม่มีความหมาย + ใช้ index ไม่เต็ม
+      orderBy: [{ score: "desc" }, { wins: "desc" }, { losses: "asc" }],
       skip,
       take: pageSize,
     }),
-    auth(),
+    currentUserId
+      ? findSelfRank(currentUserId, difficulty)
+      : Promise.resolve(null),
   ]);
 
-  const currentUserId = session?.user?.id ?? null;
   const players = stats.map((stat) =>
     mapLeaderboardPlayer(stat, { isSelf: stat.user.id === currentUserId })
   );
   const result = paginatedResult({ items: players, total, page, pageSize });
-
-  let self = null;
-  if (currentUserId) {
-    self = await findSelfRank(currentUserId, difficulty);
-  }
 
   return NextResponse.json({
     players: result.items,

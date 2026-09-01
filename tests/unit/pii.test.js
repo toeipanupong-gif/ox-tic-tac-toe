@@ -1,10 +1,12 @@
 import { describe, expect, it, beforeAll } from "vitest";
 import {
   computeEmailLookup,
+  computeNameLookup,
   decryptPii,
   encryptPii,
   isPiiEncrypted,
   maskEmail,
+  maskLeaderboardName,
   maskName,
   revealUserPii,
   toStoredUserPii,
@@ -45,6 +47,14 @@ describe("pii", () => {
     expect(isPiiEncrypted(stored.email)).toBe(true);
     expect(stored.emailLookup).toBe(
       computeEmailLookup("panupong@example.com")
+    );
+    expect(stored.nameLookup).toBe(computeNameLookup("Panupong"));
+    expect(stored.maskedName).toBe(maskLeaderboardName("Panupong"));
+  });
+
+  it("nameLookup is stable across casing/spacing", () => {
+    expect(computeNameLookup("Alice  Smith")).toBe(
+      computeNameLookup("alice smith")
     );
   });
 

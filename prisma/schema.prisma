@@ -11,6 +11,10 @@ model User {
   id            String      @id @default(cuid())
   /// PII encrypted (aes-256-gcm) — ใช้ revealUserPii() ก่อนแสดงผล
   name          String?
+  /// ชื่อที่ mask แล้วสำหรับ leaderboard — ไม่ต้อง decrypt ทุกแถว
+  maskedName    String?
+  /// HMAC ของชื่อ (normalize) สำหรับ admin exact search
+  nameLookup    String?
   /// PII encrypted (aes-256-gcm) — ใช้ revealUserPii() ก่อนแสดงผล
   email         String?
   /// HMAC ของ email สำหรับ lookup / unique (ไม่ใช่ plaintext)
@@ -24,6 +28,10 @@ model User {
   games         Game[]
   activeGame    ActiveGame?
   stats         UserStat[]
+
+  /// leaderboard / findSelfRank กรอง role: "USER"
+  @@index([role])
+  @@index([nameLookup])
 }
 
 model UserStat {
@@ -38,6 +46,8 @@ model UserStat {
   user       User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, difficulty])
+  /// leaderboard / findSelfRank: filter difficulty + ORDER BY score, wins, losses
+  @@index([difficulty, score, wins, losses])
 }
 
 model Account {
@@ -77,6 +87,9 @@ model Game {
   winStreak   Int
   createdAt   DateTime @default(now())
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([difficulty, createdAt])
 }
 
 model ActiveGame {

@@ -136,9 +136,11 @@ export default function GameClient({
       }
 
       setStatus(data.status);
-      setScore(data.score);
-      setWinStreak(data.winStreak);
-      setScoreResult(data.scoreResult);
+      if (typeof data.score === "number") {
+        setScore(data.score);
+        setWinStreak(data.winStreak ?? 0);
+      }
+      setScoreResult(data.scoreResult ?? null);
       boardBeforeMove.current = data.board;
 
       if (data.status !== "PLAYING") {

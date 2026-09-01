@@ -24,30 +24,25 @@ export default async function LeaderboardPage() {
     user: { role: "USER" },
   };
 
-  const [total, stats] = await Promise.all([
+  const [total, stats, self] = await Promise.all([
     prisma.userStat.count({ where }),
     prisma.userStat.findMany({
       where,
       include: {
-        user: { select: { id: true, name: true } },
+        user: { select: { id: true, name: true, maskedName: true } },
       },
-      orderBy: [
-        { score: "desc" },
-        { wins: "desc" },
-        { losses: "asc" },
-        { user: { name: "asc" } },
-      ],
+      // ไม่ orderBy user.name — ciphertext ไม่มีความหมาย + ใช้ index ไม่เต็ม
+      orderBy: [{ score: "desc" }, { wins: "desc" }, { losses: "asc" }],
       take: pageSize,
     }),
+    currentUserId
+      ? findSelfRank(currentUserId, difficulty)
+      : Promise.resolve(null),
   ]);
 
   const players = stats.map((stat) =>
     mapLeaderboardPlayer(stat, { isSelf: stat.user.id === currentUserId })
   );
-
-  const self = currentUserId
-    ? await findSelfRank(currentUserId, difficulty)
-    : null;
 
   return (
     <section className="space-y-4 sm:space-y-6">

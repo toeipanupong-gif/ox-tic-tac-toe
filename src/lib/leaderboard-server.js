@@ -1,32 +1,30 @@
 import { prisma } from "@/lib/prisma";
 import { mapLeaderboardPlayer } from "@/lib/leaderboard";
 
+/**
+ * อันดับของผู้เล่น — นับคนที่ดีกว่าด้วย tie-break เดียวกับ orderBy leaderboard
+ * ใช้ index (difficulty, score, wins, losses)
+ */
 export async function findSelfRank(userId, difficulty) {
   const selfStat = await prisma.userStat.findUnique({
     where: { userId_difficulty: { userId, difficulty } },
     include: {
-      user: { select: { id: true, name: true, role: true } },
+      user: { select: { id: true, name: true, maskedName: true, role: true } },
     },
   });
 
   if (!selfStat || selfStat.user.role !== "USER") return null;
+
+  const { score, wins, losses } = selfStat;
 
   const betterCount = await prisma.userStat.count({
     where: {
       difficulty,
       user: { role: "USER" },
       OR: [
-        { score: { gt: selfStat.score } },
-        {
-          AND: [{ score: selfStat.score }, { wins: { gt: selfStat.wins } }],
-        },
-        {
-          AND: [
-            { score: selfStat.score },
-            { wins: selfStat.wins },
-            { losses: { lt: selfStat.losses } },
-          ],
-        },
+        { score: { gt: score } },
+        { score, wins: { gt: wins } },
+        { score, wins, losses: { lt: losses } },
       ],
     },
   });

@@ -2,8 +2,10 @@ import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { normalizeDifficulty, difficultyLabel } from "@/lib/game/difficulty";
 import { excelDownloadResponse } from "@/lib/excel";
+import { ADMIN_EXPORT_ROW_LIMIT } from "@/lib/admin-limits";
 import {
   computeEmailLookup,
+  computeNameLookup,
   maskEmail,
   maskName,
   normalizeEmail,
@@ -21,6 +23,13 @@ const SORT_FIELDS = new Set([
   "winStreak",
   "winRate",
 ]);
+
+const USER_SELECT = {
+  id: true,
+  name: true,
+  email: true,
+  role: true,
+};
 
 function orderByFor(sortKey, dir) {
   const direction = dir === "asc" ? "asc" : "desc";
@@ -41,6 +50,7 @@ function orderByFor(sortKey, dir) {
         { losses: direction === "desc" ? "asc" : "desc" },
       ];
     case "player":
+      return { user: { maskedName: direction } };
     case "email":
       return { score: direction };
     case "score":
@@ -93,6 +103,21 @@ function winRateLabel(wins, losses, draws) {
   return `${((wins / total) * 100).toFixed(1)}%`;
 }
 
+function mapPlayerRow(s) {
+  const user = revealUserPii(s.user);
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    score: s.score,
+    wins: s.wins,
+    losses: s.losses,
+    draws: s.draws,
+    winStreak: s.winStreak,
+  };
+}
+
 async function loadAllPlayers({ difficulty, search, role, sortKey, dir }) {
   const userWhere = {};
   if (role === "USER" || role === "ADMIN") {
@@ -106,44 +131,44 @@ async function loadAllPlayers({ difficulty, search, role, sortKey, dir }) {
     userWhere.emailLookup = emailLookup;
   }
 
-  const where = {
-    difficulty,
-    user: userWhere,
-  };
+  const nameLookup =
+    search && !emailLookup ? computeNameLookup(search) : null;
 
+  // exact name ก่อน
+  if (nameLookup && sortKey !== "email") {
+    const exactWhere = {
+      difficulty,
+      user: { ...userWhere, nameLookup },
+    };
+    const exactCount = await prisma.userStat.count({ where: exactWhere });
+    if (exactCount > 0) {
+      const orderBy = orderByFor(sortKey, dir);
+      const rows = await prisma.userStat.findMany({
+        where: exactWhere,
+        include: { user: { select: USER_SELECT } },
+        orderBy: Array.isArray(orderBy) ? orderBy : [orderBy],
+        take: ADMIN_EXPORT_ROW_LIMIT,
+      });
+      return rows.map(mapPlayerRow);
+    }
+  }
+
+  const where = { difficulty, user: userWhere };
   const needsInMemory =
-    Boolean(search && !emailLookup) ||
-    sortKey === "player" ||
-    sortKey === "email";
+    Boolean(search && !emailLookup) || sortKey === "email";
+
+  const orderBy = needsInMemory
+    ? orderByFor("score", "desc")
+    : orderByFor(sortKey, dir);
 
   const rows = await prisma.userStat.findMany({
     where,
-    include: {
-      user: {
-        select: { id: true, name: true, email: true, role: true },
-      },
-    },
-    orderBy: needsInMemory
-      ? [orderByFor("score", "desc")].flat()
-      : Array.isArray(orderByFor(sortKey, dir))
-        ? orderByFor(sortKey, dir)
-        : [orderByFor(sortKey, dir)],
+    include: { user: { select: USER_SELECT } },
+    orderBy: Array.isArray(orderBy) ? orderBy : [orderBy],
+    take: ADMIN_EXPORT_ROW_LIMIT,
   });
 
-  let players = rows.map((s) => {
-    const user = revealUserPii(s.user);
-    return {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      score: s.score,
-      wins: s.wins,
-      losses: s.losses,
-      draws: s.draws,
-      winStreak: s.winStreak,
-    };
-  });
+  let players = rows.map(mapPlayerRow);
 
   if (search && !emailLookup) {
     players = players.filter((p) => matchesSearch(p, search));

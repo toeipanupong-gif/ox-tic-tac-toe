@@ -1,11 +1,10 @@
-import { auth } from "@/lib/auth";
+import { auth, loadUserDisplayPii } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import ProfileView from "@/components/profile/ProfileView";
 import { DEFAULT_DIFFICULTY, DIFFICULTIES } from "@/lib/game/difficulty";
-import { getOrCreateAllStats } from "@/lib/game/stats";
+import { getOrCreateAllStats, UserNotFoundError } from "@/lib/game/stats";
 import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
 import { createPageMetadata } from "@/lib/seo";
-import { revealUserPii } from "@/lib/pii";
 import { redirect } from "next/navigation";
 
 export const metadata = createPageMetadata({
@@ -24,38 +23,46 @@ export default async function ProfilePage() {
     clearSessionAndLogin();
   }
 
-  const userRow = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { id: true, name: true, email: true },
-  });
-
-  if (!userRow) {
-    clearSessionAndLogin();
-  }
-  const user = revealUserPii(userRow);
-
   const difficulty = DEFAULT_DIFFICULTY;
   const pageSize = DEFAULT_PAGE_SIZE;
 
-  const [statsByDifficultyRaw, totalGames, games] = await Promise.all([
-    getOrCreateAllStats(user.id),
-    prisma.game.count({
-      where: { userId: user.id, difficulty },
-    }),
-    prisma.game.findMany({
-      where: { userId: user.id, difficulty },
-      orderBy: { createdAt: "desc" },
-      take: pageSize,
-      select: {
-        id: true,
-        result: true,
-        scoreChange: true,
-        bonusScore: true,
-        winStreak: true,
-        createdAt: true,
-      },
-    }),
-  ]);
+  let statsByDifficultyRaw;
+  let totalGames;
+  let games;
+  let display;
+  try {
+    [statsByDifficultyRaw, totalGames, games, display] = await Promise.all([
+      getOrCreateAllStats(session.user.id, undefined, { skipAssert: true }),
+      prisma.game.count({
+        where: { userId: session.user.id, difficulty },
+      }),
+      prisma.game.findMany({
+        where: { userId: session.user.id, difficulty },
+        orderBy: { createdAt: "desc" },
+        take: pageSize,
+        select: {
+          id: true,
+          result: true,
+          scoreChange: true,
+          bonusScore: true,
+          winStreak: true,
+          createdAt: true,
+        },
+      }),
+      loadUserDisplayPii(session.user.id),
+    ]);
+  } catch (error) {
+    if (error instanceof UserNotFoundError) {
+      clearSessionAndLogin();
+    }
+    throw error;
+  }
+
+  const user = {
+    id: session.user.id,
+    name: display.name,
+    email: display.email,
+  };
 
   const statsByDifficulty = Object.fromEntries(
     DIFFICULTIES.map((level) => {

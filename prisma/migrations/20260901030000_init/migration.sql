@@ -2,6 +2,8 @@
 CREATE TABLE "User" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "name" TEXT,
+    "maskedName" TEXT,
+    "nameLookup" TEXT,
     "email" TEXT,
     "emailLookup" TEXT,
     "emailVerified" DATETIME,
@@ -80,7 +82,16 @@ CREATE TABLE "ActiveGame" (
 CREATE UNIQUE INDEX "User_emailLookup_key" ON "User"("emailLookup");
 
 -- CreateIndex
+CREATE INDEX "User_role_idx" ON "User"("role");
+
+-- CreateIndex
+CREATE INDEX "User_nameLookup_idx" ON "User"("nameLookup");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "UserStat_userId_difficulty_key" ON "UserStat"("userId", "difficulty");
+
+-- CreateIndex
+CREATE INDEX "UserStat_difficulty_score_wins_losses_idx" ON "UserStat"("difficulty", "score", "wins", "losses");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Account_provider_providerAccountId_key" ON "Account"("provider", "providerAccountId");
@@ -93,6 +104,12 @@ CREATE UNIQUE INDEX "VerificationToken_token_key" ON "VerificationToken"("token"
 
 -- CreateIndex
 CREATE UNIQUE INDEX "VerificationToken_identifier_token_key" ON "VerificationToken"("identifier", "token");
+
+-- CreateIndex
+CREATE INDEX "Game_userId_createdAt_idx" ON "Game"("userId", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "Game_difficulty_createdAt_idx" ON "Game"("difficulty", "createdAt");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "ActiveGame_userId_key" ON "ActiveGame"("userId");

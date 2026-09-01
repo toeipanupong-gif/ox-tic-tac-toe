@@ -9,8 +9,22 @@ export const GAME_RATE_LIMITS = {
 const DEFAULT_MESSAGE =
   "คุณเล่นเร็วเกินไป กรุณารอสักครู่แล้วลองใหม่";
 
+/** ช่วง sweep key ที่หมดอายุ — กัน Map โตจาก idle users */
+const SWEEP_INTERVAL_MS = 60_000;
+let lastSweepAt = 0;
+
 function bucketKey(userId, action) {
   return `${action}:${userId}`;
+}
+
+function sweepExpired(now) {
+  if (now - lastSweepAt < SWEEP_INTERVAL_MS) return;
+  lastSweepAt = now;
+  for (const [key, entry] of buckets) {
+    if (entry.resetAt <= now) {
+      buckets.delete(key);
+    }
+  }
 }
 
 function getOrCreateEntry(key, windowMs, now) {
@@ -34,6 +48,8 @@ export function checkRateLimit(userId, action, now = Date.now()) {
     return { ok: true };
   }
 
+  sweepExpired(now);
+
   const key = bucketKey(userId, action);
   const entry = getOrCreateEntry(key, limit.windowMs, now);
 
@@ -53,7 +69,13 @@ export function checkRateLimit(userId, action, now = Date.now()) {
   return { ok: true };
 }
 
+/** จำนวน key ใน Map — ใช้ใน unit test */
+export function rateLimitBucketSizeForTests() {
+  return buckets.size;
+}
+
 /** ใช้ใน unit test — รีเซ็ต in-memory state */
 export function resetRateLimitsForTests() {
   buckets.clear();
+  lastSweepAt = 0;
 }

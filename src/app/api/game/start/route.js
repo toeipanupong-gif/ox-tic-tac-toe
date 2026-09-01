@@ -22,13 +22,8 @@ export async function POST(request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const dbUser = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { id: true },
-  });
-  if (!dbUser) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  // session callback ยืนยัน user ใน DB แล้ว — ไม่ต้อง findUnique ซ้ำ
+  const userId = session.user.id;
 
   let difficulty = "NORMAL";
   try {
@@ -39,34 +34,33 @@ export async function POST(request) {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 
-  const userId = dbUser.id;
-
   const rateLimited = await enforceGameRateLimit(userId, "game:start");
   if (rateLimited) return rateLimited;
 
   const board = createBoard();
 
   try {
-    const activeGame = await prisma.activeGame.upsert({
-      where: { userId },
-      create: {
-        userId,
-        board: serializeBoard(board),
-        status: "PLAYING",
-        difficulty,
-        playerSymbol: PLAYER,
-        botSymbol: BOT,
-      },
-      update: {
-        board: serializeBoard(board),
-        status: "PLAYING",
-        difficulty,
-        playerSymbol: PLAYER,
-        botSymbol: BOT,
-      },
-    });
-
-    const stat = await getUserStat(userId, difficulty);
+    const [activeGame, stat] = await Promise.all([
+      prisma.activeGame.upsert({
+        where: { userId },
+        create: {
+          userId,
+          board: serializeBoard(board),
+          status: "PLAYING",
+          difficulty,
+          playerSymbol: PLAYER,
+          botSymbol: BOT,
+        },
+        update: {
+          board: serializeBoard(board),
+          status: "PLAYING",
+          difficulty,
+          playerSymbol: PLAYER,
+          botSymbol: BOT,
+        },
+      }),
+      getUserStat(userId, difficulty),
+    ]);
 
     return NextResponse.json({
       gameId: activeGame.id,

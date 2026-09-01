@@ -2,6 +2,7 @@ import { describe, expect, it, beforeEach } from "vitest";
 import {
   checkRateLimit,
   GAME_RATE_LIMITS,
+  rateLimitBucketSizeForTests,
   resetRateLimitsForTests,
 } from "@/lib/rate-limit";
 
@@ -55,5 +56,17 @@ describe("rate-limit", () => {
 
     expect(checkRateLimit("user-a", "game:start", now).ok).toBe(false);
     expect(checkRateLimit("user-b", "game:start", now).ok).toBe(true);
+  });
+
+  it("sweeps expired idle keys", () => {
+    const { windowMs } = GAME_RATE_LIMITS["game:start"];
+    const start = 30_000;
+
+    checkRateLimit("idle-user", "game:start", start);
+    expect(rateLimitBucketSizeForTests()).toBe(1);
+
+    // ข้าม sweep interval + window ของ key เดิม
+    checkRateLimit("other", "game:start", start + 60_000 + windowMs + 1);
+    expect(rateLimitBucketSizeForTests()).toBe(1);
   });
 });

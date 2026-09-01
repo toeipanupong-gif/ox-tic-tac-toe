@@ -48,12 +48,34 @@ export async function getUserStat(userId, difficulty, tx = prisma) {
   return ensureUserStat(userId, level, tx);
 }
 
-export async function getOrCreateAllStats(userId, tx = prisma) {
-  await assertUserExists(userId, tx);
-  // sequential — หลีกเลี่ยง race บน SQLite ตอน upsert พร้อมกัน
+export async function getOrCreateAllStats(
+  userId,
+  tx = prisma,
+  { skipAssert = false } = {}
+) {
+  // path ที่ auth() ยืนยัน user แล้ว — ข้าม assert เพื่อลด User read
+  if (!skipAssert) {
+    await assertUserExists(userId, tx);
+  }
+  const existing = await tx.userStat.findMany({ where: { userId } });
+  const byDifficulty = Object.fromEntries(
+    existing.map((s) => [s.difficulty, s])
+  );
+
+  // สร้างเฉพาะ difficulty ที่ขาด — sequential กัน race บน SQLite
   const stats = [];
   for (const difficulty of DIFFICULTIES) {
-    stats.push(await ensureUserStat(userId, difficulty, tx));
+    if (byDifficulty[difficulty]) {
+      stats.push(byDifficulty[difficulty]);
+      continue;
+    }
+    stats.push(
+      await tx.userStat.upsert({
+        where: { userId_difficulty: { userId, difficulty } },
+        create: { userId, difficulty, ...EMPTY_STAT },
+        update: {},
+      })
+    );
   }
   return Object.fromEntries(stats.map((s) => [s.difficulty, s]));
 }

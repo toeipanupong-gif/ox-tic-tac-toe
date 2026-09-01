@@ -1,6 +1,4 @@
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-import { getUserStat, UserNotFoundError } from "@/lib/game/stats";
 import { normalizeDifficulty, difficultyLabel } from "@/lib/game/difficulty";
 import GameClient from "@/components/game/GameClient";
 import { createPageMetadata } from "@/lib/seo";
@@ -22,27 +20,10 @@ export default async function GamePage({ searchParams }) {
     clearSessionAndLogin();
   }
 
-  const dbUser = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { id: true },
-  });
-  if (!dbUser) {
-    clearSessionAndLogin();
-  }
-
   const params = await searchParams;
   const difficulty = normalizeDifficulty(params?.difficulty);
 
-  let stat;
-  try {
-    stat = await getUserStat(dbUser.id, difficulty);
-  } catch (error) {
-    if (error instanceof UserNotFoundError) {
-      clearSessionAndLogin();
-    }
-    throw error;
-  }
-
+  // ไม่ preload stat — /api/game/start เป็นแหล่งเดียว (เลิกอ่านซ้ำ)
   return (
     <section className="space-y-4 sm:space-y-6">
       <div>
@@ -53,11 +34,7 @@ export default async function GamePage({ searchParams }) {
           ผู้เล่น vs Bot — ระดับ {difficultyLabel(difficulty)}
         </p>
       </div>
-      <GameClient
-        initialScore={stat.score}
-        initialWinStreak={stat.winStreak}
-        difficulty={difficulty}
-      />
+      <GameClient difficulty={difficulty} />
     </section>
   );
 }

@@ -47,6 +47,8 @@ next-env.d.ts
 prisma/*.db
 prisma/*.db-journal
 *.db
+*.db-shm
+*.db-wal
 *.db-journal
 
 package-lock.json

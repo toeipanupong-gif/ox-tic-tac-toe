@@ -1,5 +1,4 @@
-import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { auth, loadUserDisplayPii } from "@/lib/auth";
 import { getOrCreateAllStats, UserNotFoundError } from "@/lib/game/stats";
 import DashboardStats from "@/components/dashboard/DashboardStats";
 import StartGameButton from "@/components/game/StartGameButton";
@@ -22,17 +21,15 @@ export default async function DashboardPage() {
     clearSessionAndLogin();
   }
 
-  const dbUser = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { id: true },
-  });
-  if (!dbUser) {
-    clearSessionAndLogin();
-  }
-
   let statsByDifficulty;
+  let display;
   try {
-    statsByDifficulty = await getOrCreateAllStats(dbUser.id);
+    [statsByDifficulty, display] = await Promise.all([
+      getOrCreateAllStats(session.user.id, undefined, {
+        skipAssert: true,
+      }),
+      loadUserDisplayPii(session.user.id),
+    ]);
   } catch (error) {
     if (error instanceof UserNotFoundError) {
       clearSessionAndLogin();
@@ -60,7 +57,7 @@ export default async function DashboardPage() {
           <h1 className="font-[family-name:var(--font-display)] text-3xl font-bold tracking-tight text-teal-300 sm:text-4xl md:text-5xl">
             Hello,
             <span className="mt-2 block text-xl font-semibold tracking-normal text-slate-200 sm:text-2xl">
-              {session.user.name || session.user.email}
+              {display.name || display.email}
             </span>
           </h1>
         </div>

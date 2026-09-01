@@ -1,9 +1,9 @@
 import { describe, expect, it, beforeAll } from "vitest";
-import { encryptPii } from "../../src/lib/pii.js";
 import {
+  encryptPii,
   maskLeaderboardName,
-  mapLeaderboardPlayer,
-} from "../../src/lib/leaderboard.js";
+} from "../../src/lib/pii.js";
+import { mapLeaderboardPlayer } from "../../src/lib/leaderboard.js";
 
 beforeAll(() => {
   if (!process.env.PII_ENCRYPTION_KEY) {
@@ -19,7 +19,7 @@ describe("leaderboard", () => {
     expect(maskLeaderboardName("A")).toBe("*");
   });
 
-  it("mapLeaderboardPlayer omits email and masks others", () => {
+  it("mapLeaderboardPlayer uses maskedName without decrypt for others", () => {
     const stat = {
       score: 10,
       wins: 3,
@@ -28,6 +28,7 @@ describe("leaderboard", () => {
       user: {
         id: "u1",
         name: encryptPii("Alice Smith"),
+        maskedName: "A*** S***",
         email: encryptPii("alice@example.com"),
       },
     };
@@ -45,5 +46,19 @@ describe("leaderboard", () => {
 
     const self = mapLeaderboardPlayer(stat, { isSelf: true });
     expect(self.name).toBe("Alice Smith");
+  });
+
+  it("mapLeaderboardPlayer falls back to decrypt+mask when no maskedName", () => {
+    const stat = {
+      score: 1,
+      wins: 0,
+      losses: 0,
+      draws: 0,
+      user: {
+        id: "u2",
+        name: encryptPii("Bob Lee"),
+      },
+    };
+    expect(mapLeaderboardPlayer(stat).name).toBe("B** L**");
   });
 });

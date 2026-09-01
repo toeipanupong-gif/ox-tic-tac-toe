@@ -2,6 +2,7 @@ import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { normalizeDifficulty, difficultyLabel } from "@/lib/game/difficulty";
 import { excelDownloadResponse } from "@/lib/excel";
+import { ADMIN_EXPORT_ROW_LIMIT } from "@/lib/admin-limits";
 import { maskEmail, maskName, revealUserPii } from "@/lib/pii";
 
 const SORT_FIELDS = new Set([
@@ -85,6 +86,7 @@ async function loadAllGames({
     orderBy: needsInMemory
       ? orderByFor("when", "desc")
       : orderByFor(sortKey, dir),
+    take: ADMIN_EXPORT_ROW_LIMIT,
   });
 
   let items = games.map((g) => ({

@@ -13,33 +13,76 @@ import {
 import { getBotMove } from "@/lib/game/minimax";
 import { calculateScore } from "@/lib/game/score";
 import { normalizeDifficulty } from "@/lib/game/difficulty";
-import { getUserStat } from "@/lib/game/stats";
 import { enforceGameRateLimit } from "@/lib/game-api";
 
 const bodySchema = z.object({
   position: z.number().int().min(0).max(8),
 });
 
-async function finishGame(tx, userId, difficulty, result, currentStreak) {
-  const calc = calculateScore(result, currentStreak);
-  const level = normalizeDifficulty(difficulty);
-
-  const current = await tx.userStat.upsert({
-    where: { userId_difficulty: { userId, difficulty: level } },
-    create: { userId, difficulty: level },
-    update: {},
-  });
-
-  const stat = await tx.userStat.update({
-    where: { id: current.id },
-    data: {
-      score: current.score + calc.nextScoreDelta,
+/** คำนวณนอก txn — คืน calc + nextData จาก current snap */
+function planFinish(result, current) {
+  const calc = calculateScore(result, current?.winStreak ?? 0);
+  return {
+    calc,
+    nextData: {
+      score: (current?.score ?? 0) + calc.nextScoreDelta,
       winStreak: calc.nextStreak,
-      wins: result === "WIN" ? current.wins + 1 : current.wins,
-      losses: result === "LOSS" ? current.losses + 1 : current.losses,
-      draws: result === "DRAW" ? current.draws + 1 : current.draws,
+      wins: (current?.wins ?? 0) + (result === "WIN" ? 1 : 0),
+      losses: (current?.losses ?? 0) + (result === "LOSS" ? 1 : 0),
+      draws: (current?.draws ?? 0) + (result === "DRAW" ? 1 : 0),
     },
-  });
+  };
+}
+
+/**
+ * เขียน stat + game ใน txn หลัง claim แล้ว
+ * ใช้ค่าที่คำนวณนอก txn เป็นหลัก — ถ้า snap เปลี่ยนค่อยอ่านใหม่ใน txn (rare)
+ */
+async function writeFinish(tx, userId, difficulty, result, snap) {
+  const level = normalizeDifficulty(difficulty);
+  let calc = snap.calc;
+  let nextData = snap.nextData;
+  let current = snap.current;
+
+  let stat;
+  if (current) {
+    const updated = await tx.userStat.updateMany({
+      where: {
+        id: current.id,
+        score: current.score,
+        winStreak: current.winStreak,
+        wins: current.wins,
+        losses: current.losses,
+        draws: current.draws,
+      },
+      data: nextData,
+    });
+    if (updated.count === 0) {
+      const fresh = await tx.userStat.findUnique({ where: { id: current.id } });
+      ({ calc, nextData } = planFinish(result, fresh));
+      stat = await tx.userStat.update({
+        where: { id: current.id },
+        data: nextData,
+      });
+    } else {
+      stat = { ...current, ...nextData };
+    }
+  } else {
+    try {
+      stat = await tx.userStat.create({
+        data: { userId, difficulty: level, ...nextData },
+      });
+    } catch {
+      const fresh = await tx.userStat.findUnique({
+        where: { userId_difficulty: { userId, difficulty: level } },
+      });
+      ({ calc, nextData } = planFinish(result, fresh));
+      stat = await tx.userStat.update({
+        where: { id: fresh.id },
+        data: nextData,
+      });
+    }
+  }
 
   await tx.game.create({
     data: {
@@ -61,15 +104,8 @@ export async function POST(request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const dbUser = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { id: true },
-  });
-  if (!dbUser) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const userId = dbUser.id;
+  // session callback ยืนยัน user ใน DB แล้ว — ไม่ต้อง findUnique ซ้ำ
+  const userId = session.user.id;
 
   const rateLimited = await enforceGameRateLimit(userId, "game:move");
   if (rateLimited) return rateLimited;
@@ -81,44 +117,63 @@ export async function POST(request) {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 
+  // อ่าน + คำนวณนอก txn — ลดเวลาถือ SQLite write lock (โดยเฉพาะ getBotMove)
+  const activeGame = await prisma.activeGame.findUnique({ where: { userId } });
+  if (!activeGame || activeGame.status !== "PLAYING") {
+    return NextResponse.json({ error: "No active game" }, { status: 400 });
+  }
+
+  const difficulty = normalizeDifficulty(activeGame.difficulty);
+  const previousBoard = activeGame.board;
+
+  let board;
+  try {
+    board = makeMove(
+      deserializeBoard(previousBoard),
+      body.position,
+      PLAYER
+    );
+  } catch (error) {
+    return NextResponse.json(
+      { error: error.message || "Invalid move" },
+      { status: 400 }
+    );
+  }
+
+  let status = getGameStatus(board);
+  let botPosition = null;
+
+  if (status === "PLAYING") {
+    botPosition = getBotMove(board, difficulty);
+    if (botPosition !== null) {
+      board = makeMove(board, botPosition, BOT);
+      status = getGameStatus(board);
+    }
+  }
+
+  const nextBoard = serializeBoard(board);
+
+  // จบเกม: อ่าน streak + คำนวณคะแนนนอก txn
+  let finishSnap = null;
+  if (status !== "PLAYING") {
+    const current = await prisma.userStat.findUnique({
+      where: { userId_difficulty: { userId, difficulty } },
+    });
+    const planned = planFinish(status, current);
+    finishSnap = { current, ...planned };
+  }
+
+  // txn สั้น ๆ — claim ด้วย status + board เดิมกัน race แล้วเขียนอย่างเดียว
   const outcome = await prisma.$transaction(async (tx) => {
-    const activeGame = await tx.activeGame.findUnique({ where: { userId } });
-    if (!activeGame || activeGame.status !== "PLAYING") {
-      return { error: "No active game", status: 400 };
-    }
-
-    const difficulty = normalizeDifficulty(activeGame.difficulty);
-
-    let board;
-    try {
-      board = makeMove(
-        deserializeBoard(activeGame.board),
-        body.position,
-        PLAYER
-      );
-    } catch (error) {
-      return {
-        error: error.message || "Invalid move",
-        status: 400,
-      };
-    }
-
-    let status = getGameStatus(board);
-    let botPosition = null;
-
-    if (status === "PLAYING") {
-      botPosition = getBotMove(board, difficulty);
-      if (botPosition !== null) {
-        board = makeMove(board, botPosition, BOT);
-        status = getGameStatus(board);
-      }
-    }
-
     if (status !== "PLAYING") {
       const claimed = await tx.activeGame.updateMany({
-        where: { userId, status: "PLAYING" },
+        where: {
+          userId,
+          status: "PLAYING",
+          board: previousBoard,
+        },
         data: {
-          board: serializeBoard(board),
+          board: nextBoard,
           status,
         },
       });
@@ -126,40 +181,32 @@ export async function POST(request) {
         return { error: "Game already finished", status: 409 };
       }
 
-      const current = await getUserStat(userId, difficulty, tx);
-      const finished = await finishGame(
+      const finished = await writeFinish(
         tx,
         userId,
         difficulty,
         status,
-        current.winStreak
+        finishSnap
       );
-
-      return {
-        board,
-        status,
-        difficulty,
-        botPosition,
-        finished,
-      };
+      return { finished };
     }
 
-    await tx.activeGame.update({
-      where: { userId },
+    const updated = await tx.activeGame.updateMany({
+      where: {
+        userId,
+        status: "PLAYING",
+        board: previousBoard,
+      },
       data: {
-        board: serializeBoard(board),
+        board: nextBoard,
         status: "PLAYING",
       },
     });
+    if (updated.count === 0) {
+      return { error: "Game already finished", status: 409 };
+    }
 
-    const userStats = await getUserStat(userId, difficulty, tx);
-    return {
-      board,
-      status,
-      difficulty,
-      botPosition,
-      userStats,
-    };
+    return {};
   });
 
   if (outcome.error) {
@@ -169,26 +216,34 @@ export async function POST(request) {
     );
   }
 
-  let scorePayload = null;
-  let userStats = outcome.userStats;
-
-  if (outcome.finished) {
-    scorePayload = {
-      scoreChange: outcome.finished.calc.scoreChange,
-      bonusScore: outcome.finished.calc.bonusScore,
-      nextScoreDelta: outcome.finished.calc.nextScoreDelta,
-    };
-    userStats = outcome.finished.stat;
+  // mid-game: ไม่ส่ง/ไม่อ่าน stat — client คง score จาก start อยู่แล้ว
+  if (!outcome.finished) {
+    return NextResponse.json({
+      board,
+      status,
+      difficulty,
+      playerSymbol: PLAYER,
+      botSymbol: BOT,
+      turn: "PLAYER",
+      botPosition,
+    });
   }
 
+  const userStats = outcome.finished.stat;
+  const scorePayload = {
+    scoreChange: outcome.finished.calc.scoreChange,
+    bonusScore: outcome.finished.calc.bonusScore,
+    nextScoreDelta: outcome.finished.calc.nextScoreDelta,
+  };
+
   return NextResponse.json({
-    board: outcome.board,
-    status: outcome.status,
-    difficulty: outcome.difficulty,
+    board,
+    status,
+    difficulty,
     playerSymbol: PLAYER,
     botSymbol: BOT,
-    turn: outcome.status === "PLAYING" ? "PLAYER" : null,
-    botPosition: outcome.botPosition,
+    turn: null,
+    botPosition,
     score: userStats?.score ?? 0,
     winStreak: userStats?.winStreak ?? 0,
     wins: userStats?.wins ?? 0,

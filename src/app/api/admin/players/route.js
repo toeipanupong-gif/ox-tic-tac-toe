@@ -3,8 +3,10 @@ import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { normalizeDifficulty } from "@/lib/game/difficulty";
 import { parsePageParams, paginatedResult } from "@/lib/pagination";
+import { ADMIN_IN_MEMORY_SCAN_LIMIT } from "@/lib/admin-limits";
 import {
   computeEmailLookup,
+  computeNameLookup,
   normalizeEmail,
   revealUserPii,
 } from "@/lib/pii";
@@ -20,6 +22,13 @@ const SORT_FIELDS = new Set([
   "winStreak",
   "winRate",
 ]);
+
+const USER_SELECT = {
+  id: true,
+  name: true,
+  email: true,
+  role: true,
+};
 
 function orderByFor(sortKey, dir) {
   const direction = dir === "asc" ? "asc" : "desc";
@@ -40,8 +49,8 @@ function orderByFor(sortKey, dir) {
         { losses: direction === "desc" ? "asc" : "desc" },
       ];
     case "player":
+      return { user: { maskedName: direction } };
     case "email":
-      // name/email เป็น PII — เรียงใน memory หลัง decrypt
       return { score: direction };
     case "score":
     default:
@@ -87,6 +96,47 @@ function comparePlayers(a, b, sortKey, dir) {
   }
 }
 
+function mapPlayerRow(s) {
+  const user = revealUserPii(s.user);
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    score: s.score,
+    wins: s.wins,
+    losses: s.losses,
+    draws: s.draws,
+    winStreak: s.winStreak,
+  };
+}
+
+function jsonPage(players, total, page, pageSize) {
+  const result = paginatedResult({ items: players, total, page, pageSize });
+  return NextResponse.json({
+    players: result.items,
+    total: result.total,
+    page: result.page,
+    pageSize: result.pageSize,
+    totalPages: result.totalPages,
+  });
+}
+
+async function queryDbPage({ where, sortKey, dir, skip, pageSize, page }) {
+  const orderBy = orderByFor(sortKey, dir);
+  const [total, rows] = await Promise.all([
+    prisma.userStat.count({ where }),
+    prisma.userStat.findMany({
+      where,
+      include: { user: { select: USER_SELECT } },
+      orderBy: Array.isArray(orderBy) ? orderBy : [orderBy],
+      skip,
+      take: pageSize,
+    }),
+  ]);
+  return jsonPage(rows.map(mapPlayerRow), total, page, pageSize);
+}
+
 export async function GET(request) {
   const admin = await requireAdmin();
   if (!admin) {
@@ -108,7 +158,6 @@ export async function GET(request) {
     userWhere.role = role;
   }
 
-  // ค้นหา email แบบ exact ผ่าน emailLookup ได้; ชื่อต้อง filter หลัง decrypt
   const emailLookup = search.includes("@")
     ? computeEmailLookup(normalizeEmail(search))
     : null;
@@ -116,102 +165,57 @@ export async function GET(request) {
     userWhere.emailLookup = emailLookup;
   }
 
-  const where = {
-    difficulty,
-    user: userWhere,
-  };
+  const baseWhere = { difficulty, user: userWhere };
 
+  // exact name lookup ก่อน — ถ้าเจอใช้ DB path (ไม่ scan)
+  const nameLookup =
+    search && !emailLookup ? computeNameLookup(search) : null;
+  if (nameLookup && sortKey !== "email") {
+    const exactWhere = {
+      difficulty,
+      user: { ...userWhere, nameLookup },
+    };
+    const exactCount = await prisma.userStat.count({ where: exactWhere });
+    if (exactCount > 0) {
+      return queryDbPage({
+        where: exactWhere,
+        sortKey,
+        dir,
+        skip,
+        pageSize,
+        page,
+      });
+    }
+  }
+
+  // substring หรือ sort ตาม email — scan จำกัด + decrypt
   const needsInMemory =
-    Boolean(search && !emailLookup) ||
-    sortKey === "player" ||
-    sortKey === "email";
+    Boolean(search && !emailLookup) || sortKey === "email";
 
   if (needsInMemory) {
     const rows = await prisma.userStat.findMany({
-      where,
-      include: {
-        user: {
-          select: { id: true, name: true, email: true, role: true },
-        },
-      },
-      orderBy: Array.isArray(orderByFor("score", "desc"))
-        ? orderByFor("score", "desc")
-        : [orderByFor("score", "desc")],
+      where: baseWhere,
+      include: { user: { select: USER_SELECT } },
+      orderBy: [orderByFor("score", "desc")].flat(),
+      take: ADMIN_IN_MEMORY_SCAN_LIMIT,
     });
 
-    let players = rows.map((s) => {
-      const user = revealUserPii(s.user);
-      return {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        score: s.score,
-        wins: s.wins,
-        losses: s.losses,
-        draws: s.draws,
-        winStreak: s.winStreak,
-      };
-    });
-
+    let players = rows.map(mapPlayerRow);
     if (search && !emailLookup) {
       players = players.filter((p) => matchesSearch(p, search));
     }
-
     players.sort((a, b) => comparePlayers(a, b, sortKey, dir));
 
     const total = players.length;
-    const pageItems = players.slice(skip, skip + pageSize);
-    const result = paginatedResult({ items: pageItems, total, page, pageSize });
-
-    return NextResponse.json({
-      players: result.items,
-      total: result.total,
-      page: result.page,
-      pageSize: result.pageSize,
-      totalPages: result.totalPages,
-    });
+    return jsonPage(players.slice(skip, skip + pageSize), total, page, pageSize);
   }
 
-  const orderBy = orderByFor(sortKey, dir);
-
-  const [total, rows] = await Promise.all([
-    prisma.userStat.count({ where }),
-    prisma.userStat.findMany({
-      where,
-      include: {
-        user: {
-          select: { id: true, name: true, email: true, role: true },
-        },
-      },
-      orderBy: Array.isArray(orderBy) ? orderBy : [orderBy],
-      skip,
-      take: pageSize,
-    }),
-  ]);
-
-  const players = rows.map((s) => {
-    const user = revealUserPii(s.user);
-    return {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      score: s.score,
-      wins: s.wins,
-      losses: s.losses,
-      draws: s.draws,
-      winStreak: s.winStreak,
-    };
-  });
-
-  const result = paginatedResult({ items: players, total, page, pageSize });
-
-  return NextResponse.json({
-    players: result.items,
-    total: result.total,
-    page: result.page,
-    pageSize: result.pageSize,
-    totalPages: result.totalPages,
+  return queryDbPage({
+    where: baseWhere,
+    sortKey,
+    dir,
+    skip,
+    pageSize,
+    page,
   });
 }

@@ -21,12 +21,24 @@ function parseEncryptionKey(envValue) {
   return buf.subarray(0, 32);
 }
 
+let cachedMasterKey = null;
+let cachedLookupKey = null;
+
 function getMasterKey() {
-  return parseEncryptionKey(process.env.PII_ENCRYPTION_KEY);
+  if (!cachedMasterKey) {
+    cachedMasterKey = parseEncryptionKey(process.env.PII_ENCRYPTION_KEY);
+  }
+  return cachedMasterKey;
 }
 
 function getLookupKey() {
-  return crypto.createHmac("sha256", getMasterKey()).update(LOOKUP_INFO).digest();
+  if (!cachedLookupKey) {
+    cachedLookupKey = crypto
+      .createHmac("sha256", getMasterKey())
+      .update(LOOKUP_INFO)
+      .digest();
+  }
+  return cachedLookupKey;
 }
 
 export function isPiiEncrypted(value) {
@@ -83,15 +95,50 @@ export function computeEmailLookup(email) {
     .digest("hex");
 }
 
-/** เข้ารหัส name/email สำหรับเก็บใน DB + ตั้ง emailLookup */
+/** normalize ชื่อสำหรับ lookup (ไม่ใช่ค่าแสดงผล) */
+export function normalizeName(name) {
+  return String(name || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+}
+
+export function computeNameLookup(name) {
+  const normalized = normalizeName(name);
+  if (!normalized) return null;
+  return crypto
+    .createHmac("sha256", getLookupKey())
+    .update(`name:${normalized}`)
+    .digest("hex");
+}
+
+/** Mask ชื่อสำหรับ leaderboard — ไม่ส่งชื่อจริงออก API (ยกเว้นแถวของตัวเอง) */
+export function maskLeaderboardName(name) {
+  if (!name?.trim()) return "Player";
+  return name
+    .trim()
+    .split(/\s+/)
+    .map((word) => {
+      if (word.length <= 1) return "*";
+      return `${word[0]}${"*".repeat(Math.min(3, word.length - 1))}`;
+    })
+    .join(" ");
+}
+
+/** เข้ารหัส name/email สำหรับเก็บใน DB + ตั้ง emailLookup / maskedName / nameLookup */
 export function toStoredUserPii(data = {}) {
   const out = { ...data };
 
   if (Object.prototype.hasOwnProperty.call(out, "name")) {
     if (out.name == null || out.name === "") {
       out.name = out.name ?? null;
+      out.maskedName = null;
+      out.nameLookup = null;
     } else if (!isPiiEncrypted(out.name)) {
-      out.name = encryptPii(String(out.name).trim());
+      const plain = String(out.name).trim();
+      out.maskedName = maskLeaderboardName(plain);
+      out.nameLookup = computeNameLookup(plain);
+      out.name = encryptPii(plain);
     }
   }
 
