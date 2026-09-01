@@ -5,6 +5,7 @@ import AdminPanel from "@/components/admin/AdminPanel";
 import { DEFAULT_DIFFICULTY } from "@/lib/game/difficulty";
 import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
 import { createPageMetadata } from "@/lib/seo";
+import { revealUserPii } from "@/lib/pii";
 
 export const metadata = createPageMetadata({
   title: "Admin",
@@ -47,17 +48,20 @@ export default async function AdminPage() {
       }),
     ]);
 
-  const players = playerRows.map((s) => ({
-    id: s.user.id,
-    name: s.user.name,
-    email: s.user.email,
-    role: s.user.role,
-    score: s.score,
-    wins: s.wins,
-    losses: s.losses,
-    draws: s.draws,
-    winStreak: s.winStreak,
-  }));
+  const players = playerRows.map((s) => {
+    const user = revealUserPii(s.user);
+    return {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      score: s.score,
+      wins: s.wins,
+      losses: s.losses,
+      draws: s.draws,
+      winStreak: s.winStreak,
+    };
+  });
 
   const games = gameRows.map((g) => ({
     id: g.id,
@@ -66,7 +70,7 @@ export default async function AdminPage() {
     bonusScore: g.bonusScore,
     winStreak: g.winStreak,
     createdAt: g.createdAt.toISOString(),
-    user: g.user,
+    user: revealUserPii(g.user),
   }));
 
   return (

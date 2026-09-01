@@ -3,12 +3,14 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { normalizeDifficulty } from "@/lib/game/difficulty";
 import { parsePageParams, paginatedResult } from "@/lib/pagination";
+import { revealUserPii } from "@/lib/pii";
 
 function mapPlayer(stat) {
+  const user = revealUserPii(stat.user);
   return {
-    id: stat.user.id,
-    name: stat.user.name,
-    email: stat.user.email,
+    id: user.id,
+    name: user.name,
+    email: user.email,
     score: stat.score,
     wins: stat.wins,
     losses: stat.losses,

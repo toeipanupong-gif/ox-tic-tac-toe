@@ -6,6 +6,7 @@ import { DEFAULT_DIFFICULTY, DIFFICULTIES } from "@/lib/game/difficulty";
 import { getOrCreateAllStats } from "@/lib/game/stats";
 import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
 import { createPageMetadata } from "@/lib/seo";
+import { revealUserPii } from "@/lib/pii";
 
 export const metadata = createPageMetadata({
   title: "Profile",
@@ -17,12 +18,13 @@ export default async function ProfilePage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
-  const user = await prisma.user.findUnique({
+  const userRow = await prisma.user.findUnique({
     where: { id: session.user.id },
     select: { id: true, name: true, email: true },
   });
 
-  if (!user) redirect("/login");
+  if (!userRow) redirect("/login");
+  const user = revealUserPii(userRow);
 
   const difficulty = DEFAULT_DIFFICULTY;
   const pageSize = DEFAULT_PAGE_SIZE;

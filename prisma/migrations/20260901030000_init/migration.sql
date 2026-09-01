@@ -3,16 +3,24 @@ CREATE TABLE "User" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "name" TEXT,
     "email" TEXT,
+    "emailLookup" TEXT,
     "emailVerified" DATETIME,
-    "image" TEXT,
     "role" TEXT NOT NULL DEFAULT 'USER',
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL
+);
+
+-- CreateTable
+CREATE TABLE "UserStat" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "userId" TEXT NOT NULL,
+    "difficulty" TEXT NOT NULL DEFAULT 'NORMAL',
     "score" INTEGER NOT NULL DEFAULT 0,
     "wins" INTEGER NOT NULL DEFAULT 0,
     "losses" INTEGER NOT NULL DEFAULT 0,
     "draws" INTEGER NOT NULL DEFAULT 0,
     "winStreak" INTEGER NOT NULL DEFAULT 0,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL
+    CONSTRAINT "UserStat_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 -- CreateTable
@@ -52,6 +60,7 @@ CREATE TABLE "VerificationToken" (
 CREATE TABLE "Game" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "userId" TEXT NOT NULL,
+    "difficulty" TEXT NOT NULL DEFAULT 'NORMAL',
     "result" TEXT NOT NULL,
     "scoreChange" INTEGER NOT NULL,
     "bonusScore" INTEGER NOT NULL DEFAULT 0,
@@ -66,6 +75,7 @@ CREATE TABLE "ActiveGame" (
     "userId" TEXT NOT NULL,
     "board" TEXT NOT NULL,
     "status" TEXT NOT NULL DEFAULT 'PLAYING',
+    "difficulty" TEXT NOT NULL DEFAULT 'NORMAL',
     "playerSymbol" TEXT NOT NULL DEFAULT 'X',
     "botSymbol" TEXT NOT NULL DEFAULT 'O',
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -74,7 +84,10 @@ CREATE TABLE "ActiveGame" (
 );
 
 -- CreateIndex
-CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
+CREATE UNIQUE INDEX "User_emailLookup_key" ON "User"("emailLookup");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "UserStat_userId_difficulty_key" ON "UserStat"("userId", "difficulty");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Account_provider_providerAccountId_key" ON "Account"("provider", "providerAccountId");

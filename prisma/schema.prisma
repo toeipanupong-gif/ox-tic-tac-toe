@@ -9,8 +9,12 @@ datasource db {
 
 model User {
   id            String      @id @default(cuid())
+  /// PII encrypted (aes-256-gcm) — ใช้ revealUserPii() ก่อนแสดงผล
   name          String?
-  email         String?     @unique
+  /// PII encrypted (aes-256-gcm) — ใช้ revealUserPii() ก่อนแสดงผล
+  email         String?
+  /// HMAC ของ email สำหรับ lookup / unique (ไม่ใช่ plaintext)
+  emailLookup   String?     @unique
   emailVerified DateTime?
   role          String      @default("USER")
   createdAt     DateTime    @default(now())

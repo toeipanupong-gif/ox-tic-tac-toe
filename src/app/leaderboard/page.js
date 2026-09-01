@@ -4,6 +4,7 @@ import LeaderboardView from "@/components/leaderboard/LeaderboardView";
 import { DEFAULT_DIFFICULTY } from "@/lib/game/difficulty";
 import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
 import { createPageMetadata } from "@/lib/seo";
+import { revealUserPii } from "@/lib/pii";
 
 export const metadata = createPageMetadata({
   title: "Leaderboard",
@@ -38,15 +39,18 @@ export default async function LeaderboardPage() {
     }),
   ]);
 
-  const players = stats.map((s) => ({
-    id: s.user.id,
-    name: s.user.name,
-    email: s.user.email,
-    score: s.score,
-    wins: s.wins,
-    losses: s.losses,
-    draws: s.draws,
-  }));
+  const players = stats.map((s) => {
+    const user = revealUserPii(s.user);
+    return {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      score: s.score,
+      wins: s.wins,
+      losses: s.losses,
+      draws: s.draws,
+    };
+  });
 
   let self = null;
   const currentUserId = session?.user?.id ?? null;
@@ -84,15 +88,18 @@ export default async function LeaderboardPage() {
       });
       self = {
         rank: betterCount + 1,
-        player: {
-          id: selfStat.user.id,
-          name: selfStat.user.name,
-          email: selfStat.user.email,
-          score: selfStat.score,
-          wins: selfStat.wins,
-          losses: selfStat.losses,
-          draws: selfStat.draws,
-        },
+        player: (() => {
+          const user = revealUserPii(selfStat.user);
+          return {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            score: selfStat.score,
+            wins: selfStat.wins,
+            losses: selfStat.losses,
+            draws: selfStat.draws,
+          };
+        })(),
       };
     }
   }

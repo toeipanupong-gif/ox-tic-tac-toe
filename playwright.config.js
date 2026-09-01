@@ -1,10 +1,12 @@
 import { defineConfig, devices } from "@playwright/test";
 
+const isCI = !!process.env.CI;
+
 export default defineConfig({
   testDir: "./tests/e2e",
   fullyParallel: true,
-  forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
+  forbidOnly: isCI,
+  retries: isCI ? 2 : 0,
   use: {
     baseURL: "http://127.0.0.1:3000",
     trace: "on-first-retry",
@@ -16,8 +18,12 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: "npm run start",
+    // local: next dev (ไม่ต้อง build) · CI: build แล้ว start
+    command: isCI
+      ? "node scripts/run.mjs prisma generate && node scripts/run.mjs next build && node scripts/run.mjs next start"
+      : "node scripts/run.mjs next dev",
     url: "http://127.0.0.1:3000",
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: !isCI,
+    timeout: 180_000,
   },
 });

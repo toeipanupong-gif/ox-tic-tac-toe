@@ -87,6 +87,30 @@ ADMIN_EMAIL="your-admin@gmail.com"
 
 ผู้ใช้ที่ Login ด้วย email ตรงกับ `ADMIN_EMAIL` จะได้ role `ADMIN` อัตโนมัติ
 
+10. สร้าง `PII_ENCRYPTION_KEY` สำหรับเข้ารหัส name/email ในฐานข้อมูล (เลือกอย่างใดอย่างหนึ่ง):
+
+**macOS / Linux**
+```bash
+openssl rand -base64 32
+```
+
+**Windows PowerShell** (ไม่มี openssl)
+```powershell
+[Convert]::ToBase64String((1..32 | ForEach-Object { Get-Random -Maximum 256 }) -as [byte[]])
+```
+
+**Node.js** (ใช้ได้ทุก OS ถ้ามี Node อยู่แล้ว)
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+```
+
+นำค่าที่ได้ไปใส่ใน `.env`:
+```env
+PII_ENCRYPTION_KEY="ค่าที่ได้จากคำสั่ง"
+```
+
+> เก็บ key นี้ให้ปลอดภัย — ถ้าเปลี่ยน key จะถอดรหัสข้อมูลเก่าไม่ได้
+
 ### 4. สร้าง Database
 
 ```bash
@@ -153,3 +177,4 @@ yarn dev
 - Admin ตรวจจาก `ADMIN_EMAIL` ฝั่ง server เท่านั้น
 - Score คำนวณใน API `/api/game/move` ภายใน transaction ต่อระดับ
 - Leaderboard แสดงชื่อเต็มเฉพาะผู้ใช้ปัจจุบัน ผู้เล่นอื่นถูก mask
+- `name` / `email` เก็บใน DB เป็น PII (AES-256-GCM) + `emailLookup` (HMAC)
