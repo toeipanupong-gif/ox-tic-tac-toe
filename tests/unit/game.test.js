@@ -47,16 +47,14 @@ describe("minimax", () => {
   });
 
   it("normal takes win even when player also threatens", () => {
-    // Bot ชนะที่ 6, ผู้เล่นขู่ที่ 7 — Normal ต้องเลือก 6 (ชนะก่อน ไม่ป้องกัน)
+    // Bot ชนะที่ 6, ผู้เล่นขู่ที่ 7 — ต้องชนะก่อน
     const board = ["O", "X", null, "O", "X", null, null, null, null];
     expect(getBotMove(board, "NORMAL")).toBe(6);
   });
 
-  it("normal does not always block when no immediate win", () => {
-    // ผู้เล่นขู่ที่ 2 — Normal ไม่บังคับบล็อก แค่สุ่มช่องว่าง
+  it("normal always blocks immediate threat", () => {
     const board = ["X", "X", null, null, "O", null, null, null, null];
-    const move = getBotMove(board, "NORMAL");
-    expect([2, 3, 5, 6, 7, 8]).toContain(move);
+    expect(getBotMove(board, "NORMAL")).toBe(2);
   });
 
   it("easy returns an available move", () => {
@@ -65,13 +63,13 @@ describe("minimax", () => {
     expect([1, 2, 3, 5, 6, 7, 8]).toContain(move);
   });
 
-  it("normal opening move is random among empty cells", () => {
+  it("normal opening prefers center when optimal, still valid cell", () => {
     const board = ["X", null, null, null, null, null, null, null, null];
     const move = getBotMove(board, "NORMAL");
     expect([1, 2, 3, 4, 5, 6, 7, 8]).toContain(move);
   });
 
-  it("hard opening move is random among empty cells", () => {
+  it("hard opening is a valid empty cell (no pure-random opening)", () => {
     const board = [null, null, null, null, "X", null, null, null, null];
     const move = getBotMove(board, "HARD");
     expect([0, 1, 2, 3, 5, 6, 7, 8]).toContain(move);

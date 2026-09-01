@@ -7,6 +7,12 @@ import {
 } from "./game-engine.js";
 import { normalizeDifficulty } from "./difficulty.js";
 
+/** อัตราเลือกตาที่ดีที่สุด (หลัง win/block แล้ว) */
+const OPTIMAL_RATE = {
+  NORMAL: 0.50,
+  HARD: 0.85,
+};
+
 function evaluate(board) {
   const result = checkWinner(board);
   if (result?.winner === BOT) return 10;
@@ -40,24 +46,16 @@ function minimax(board, isMaximizing) {
   return best;
 }
 
-function getMinimaxMove(board) {
-  const moves = getAvailableMoves(board);
-  if (moves.length === 0) return null;
-
-  let bestScore = -Infinity;
-  let bestMove = moves[0];
-
-  for (const move of moves) {
+function scoreMoves(board) {
+  return getAvailableMoves(board).map((move) => {
     const next = [...board];
     next[move] = BOT;
-    const score = minimax(next, false);
-    if (score > bestScore) {
-      bestScore = score;
-      bestMove = move;
-    }
-  }
+    return { move, score: minimax(next, false) };
+  });
+}
 
-  return bestMove;
+function pickRandom(items) {
+  return items[Math.floor(Math.random() * items.length)];
 }
 
 function findImmediateWin(board, symbol) {
@@ -69,22 +67,48 @@ function findImmediateWin(board, symbol) {
   return null;
 }
 
-/** Normal: ชนะทันทีถ้าได้ — นอกนั้นไม่ป้องกัน (สุ่ม) */
-function getNormalMove(board) {
-  const winMove = findImmediateWin(board, BOT);
-  if (winMove !== null) return winMove;
-  return getEasyMove(board);
-}
-
 function getEasyMove(board) {
   const moves = getAvailableMoves(board);
   if (moves.length === 0) return null;
-  return moves[Math.floor(Math.random() * moves.length)];
+  return pickRandom(moves);
 }
 
-/** หมากแรกของบอท = ยังไม่มี O บนกระดาน */
-function isBotOpeningMove(board) {
-  return !board.some((cell) => cell === BOT);
+/**
+ * ลำดับความสำคัญ:
+ * 1) ชนะทันที
+ * 2) บล็อกผู้เล่น
+ * 3) ด้วยโอกาส optimalRate เลือกตาที่ดีที่สุด (minimax)
+ * 4) นอกนั้นพลาดแบบควบคุมได้
+ *    - Hard: พลาดเฉพาะตาที่ไม่แพ้ทันที (score >= 0) ถ้ามี
+ *    - Normal: สุ่มช่องว่างที่เหลือ
+ */
+function getStrategicMove(board, { optimalRate, preferSafeMistake }) {
+  const winMove = findImmediateWin(board, BOT);
+  if (winMove !== null) return winMove;
+
+  const blockMove = findImmediateWin(board, PLAYER);
+  if (blockMove !== null) return blockMove;
+
+  const scored = scoreMoves(board);
+  if (scored.length === 0) return null;
+
+  const bestScore = Math.max(...scored.map((s) => s.score));
+  const bestMoves = scored.filter((s) => s.score === bestScore);
+
+  if (Math.random() < optimalRate) {
+    return pickRandom(bestMoves).move;
+  }
+
+  const suboptimal = scored.filter((s) => s.score < bestScore);
+  if (suboptimal.length === 0) return pickRandom(bestMoves).move;
+
+  if (preferSafeMistake) {
+    const safe = suboptimal.filter((s) => s.score >= 0);
+    const pool = safe.length > 0 ? safe : suboptimal;
+    return pickRandom(pool).move;
+  }
+
+  return pickRandom(suboptimal).move;
 }
 
 /** @param {Array} board @param {"EASY"|"NORMAL"|"HARD"} [difficulty] */
@@ -92,9 +116,15 @@ export function getBotMove(board, difficulty = "NORMAL") {
   const level = normalizeDifficulty(difficulty);
   if (level === "EASY") return getEasyMove(board);
 
-  // Normal / Hard: หมากแรกสุ่ม เพื่อเปิดช่องให้ผู้เล่นมีโอกาสชนะ
-  if (isBotOpeningMove(board)) return getEasyMove(board);
+  if (level === "HARD") {
+    return getStrategicMove(board, {
+      optimalRate: OPTIMAL_RATE.HARD,
+      preferSafeMistake: true,
+    });
+  }
 
-  if (level === "HARD") return getMinimaxMove(board);
-  return getNormalMove(board);
+  return getStrategicMove(board, {
+    optimalRate: OPTIMAL_RATE.NORMAL,
+    preferSafeMistake: false,
+  });
 }
