@@ -206,7 +206,7 @@ export async function GET(request) {
   const stamp = new Date().toISOString().slice(0, 10);
   const level = difficultyLabel(difficulty).toLowerCase();
   return excelDownloadResponse(
-    `players-${level}-${stamp}.xls`,
+    `players-${level}-${stamp}.xlsx`,
     "Players",
     headers,
     rows
