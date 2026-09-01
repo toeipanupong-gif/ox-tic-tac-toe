@@ -1,5 +1,6 @@
 import { Chakra_Petch } from "next/font/google";
 import NavBar from "@/components/auth/NavBar";
+import SiteFooter from "@/components/legal/SiteFooter";
 import { siteConfig } from "@/lib/seo";
 import "./globals.css";
 
@@ -70,6 +71,7 @@ export default function RootLayout({ children }) {
       <body className={`${chakraPetch.className} flex min-h-full flex-col`}>
         <NavBar />
         <main className="mx-auto w-full max-w-5xl flex-1 px-3 py-6 sm:px-4 sm:py-8">{children}</main>
+        <SiteFooter />
       </body>
     </html>
   );

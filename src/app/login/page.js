@@ -1,4 +1,5 @@
 import GoogleSignInButton from "@/components/auth/GoogleSignInButton";
+import PolicyLinksText from "@/components/legal/PolicyLinksText";
 import { createPageMetadata } from "@/lib/seo";
 
 export const metadata = createPageMetadata({
@@ -18,6 +19,7 @@ export default function LoginPage() {
       </p>
       <div className="mt-6 rounded-2xl border border-slate-700/70 bg-slate-900/50 p-4 sm:mt-8 sm:p-6">
         <GoogleSignInButton />
+        <PolicyLinksText className="mt-4" />
       </div>
     </section>
   );

@@ -1,4 +1,5 @@
 import GoogleSignInButton from "@/components/auth/GoogleSignInButton";
+import PolicyLinksText from "@/components/legal/PolicyLinksText";
 import { createPageMetadata } from "@/lib/seo";
 
 export const metadata = createPageMetadata({
@@ -43,6 +44,7 @@ export default function HomePage() {
       </p>
       <div className="mt-6 flex max-w-sm flex-col gap-3 overflow-visible py-2 sm:mt-8">
         <GoogleSignInButton />
+        <PolicyLinksText className="max-w-md" />
       </div>
     </section>
   );
