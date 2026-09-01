@@ -1,5 +1,11 @@
 # OX Arena — Tic-Tac-Toe Web App
 
+> 🎮 **พร้อมท้าชน Bot ในกระดาน OX ไหม?**
+>
+> ลองวัดฝีมือกับ Bot ทั้ง 3 ระดับ **Easy / Normal / Hard** แล้วขึ้นไปคว้าอันดับบน Leaderboard!
+>
+> 👉 **[เข้าไปเล่น OX Arena](https://ox-arena.up.railway.app/)**
+
 Next.js web application สำหรับเล่น Tic-Tac-Toe กับ Bot 3 ระดับ (Easy / Normal / Hard) พร้อม Google Login, Score แยกตามระดับ, Leaderboard และ Admin Dashboard
 
 ## Tech Stack
