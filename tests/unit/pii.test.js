@@ -4,6 +4,8 @@ import {
   decryptPii,
   encryptPii,
   isPiiEncrypted,
+  maskEmail,
+  maskName,
   revealUserPii,
   toStoredUserPii,
 } from "../../src/lib/pii.js";
@@ -57,5 +59,17 @@ describe("pii", () => {
     expect(shown.name).toBe("Test User");
     expect(shown.email).toBe("test@example.com");
     expect(shown.role).toBe("USER");
+  });
+
+  it("maskName hides middle characters", () => {
+    expect(maskName("Panupong")).toBe("P******g");
+    expect(maskName("Ab")).toBe("A*");
+    expect(maskName("")).toBe("-");
+  });
+
+  it("maskEmail hides local and domain middle", () => {
+    expect(maskEmail("panupong@example.com")).toBe("p***@e***.com");
+    expect(maskEmail("a@b.co")).toBe("*@b***.co");
+    expect(maskEmail("")).toBe("-");
   });
 });

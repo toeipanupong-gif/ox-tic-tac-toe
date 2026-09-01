@@ -1,9 +1,10 @@
-import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { getUserStat } from "@/lib/game/stats";
+import { prisma } from "@/lib/prisma";
+import { getUserStat, UserNotFoundError } from "@/lib/game/stats";
 import { normalizeDifficulty, difficultyLabel } from "@/lib/game/difficulty";
 import GameClient from "@/components/game/GameClient";
 import { createPageMetadata } from "@/lib/seo";
+import { redirect } from "next/navigation";
 
 export const metadata = createPageMetadata({
   title: "Play",
@@ -11,13 +12,36 @@ export const metadata = createPageMetadata({
   path: "/game",
 });
 
+function clearSessionAndLogin() {
+  redirect("/api/auth/invalidate");
+}
+
 export default async function GamePage({ searchParams }) {
   const session = await auth();
-  if (!session?.user?.id) redirect("/login");
+  if (!session?.user?.id) {
+    clearSessionAndLogin();
+  }
+
+  const dbUser = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { id: true },
+  });
+  if (!dbUser) {
+    clearSessionAndLogin();
+  }
 
   const params = await searchParams;
   const difficulty = normalizeDifficulty(params?.difficulty);
-  const stat = await getUserStat(session.user.id, difficulty);
+
+  let stat;
+  try {
+    stat = await getUserStat(dbUser.id, difficulty);
+  } catch (error) {
+    if (error instanceof UserNotFoundError) {
+      clearSessionAndLogin();
+    }
+    throw error;
+  }
 
   return (
     <section className="space-y-4 sm:space-y-6">

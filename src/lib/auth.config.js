@@ -27,7 +27,7 @@ export const authConfig = {
   callbacks: {
     authorized({ auth, request }) {
       const { pathname } = request.nextUrl;
-      const isLoggedIn = !!auth?.user;
+      const isLoggedIn = Boolean(auth?.user?.id);
 
       const protectedPaths = ["/dashboard", "/game", "/profile", "/admin"];
       const isProtected = protectedPaths.some(
@@ -52,6 +52,9 @@ export const authConfig = {
       return token;
     },
     async session({ session, token }) {
+      if (token?.error === "UserNotFound" || !token?.id) {
+        return null;
+      }
       if (session.user) {
         session.user.id = token.id;
         session.user.role = token.role ?? "USER";

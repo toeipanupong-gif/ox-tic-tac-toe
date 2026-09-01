@@ -1,4 +1,3 @@
-import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import ProfileView from "@/components/profile/ProfileView";
@@ -7,6 +6,7 @@ import { getOrCreateAllStats } from "@/lib/game/stats";
 import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
 import { createPageMetadata } from "@/lib/seo";
 import { revealUserPii } from "@/lib/pii";
+import { redirect } from "next/navigation";
 
 export const metadata = createPageMetadata({
   title: "Profile",
@@ -14,16 +14,24 @@ export const metadata = createPageMetadata({
   path: "/profile",
 });
 
+function clearSessionAndLogin() {
+  redirect("/api/auth/invalidate");
+}
+
 export default async function ProfilePage() {
   const session = await auth();
-  if (!session?.user?.id) redirect("/login");
+  if (!session?.user?.id) {
+    clearSessionAndLogin();
+  }
 
   const userRow = await prisma.user.findUnique({
     where: { id: session.user.id },
     select: { id: true, name: true, email: true },
   });
 
-  if (!userRow) redirect("/login");
+  if (!userRow) {
+    clearSessionAndLogin();
+  }
   const user = revealUserPii(userRow);
 
   const difficulty = DEFAULT_DIFFICULTY;

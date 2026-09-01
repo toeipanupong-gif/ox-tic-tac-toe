@@ -157,6 +157,47 @@ async function fetchSummary(difficulty) {
   return res.json();
 }
 
+function playersExportUrl(params) {
+  const qs = new URLSearchParams({
+    difficulty: params.difficulty,
+    search: params.search,
+    role: params.role,
+    sort: params.sort.key,
+    dir: params.sort.dir,
+  });
+  return `/api/admin/players/export?${qs}`;
+}
+
+function gamesExportUrl(params) {
+  const qs = new URLSearchParams({
+    difficulty: params.difficulty,
+    search: params.search,
+    result: params.result,
+    from: params.from,
+    to: params.to,
+    sort: params.sort.key,
+    dir: params.sort.dir,
+  });
+  return `/api/admin/games/export?${qs}`;
+}
+
+async function downloadExport(url) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("Export failed");
+  const blob = await res.blob();
+  const cd = res.headers.get("Content-Disposition") || "";
+  const match = cd.match(/filename="([^"]+)"/);
+  const filename = match?.[1] || "export.xls";
+  const objectUrl = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = objectUrl;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(objectUrl);
+}
+
 export default function AdminPanel({
   initialDifficulty = DEFAULT_DIFFICULTY,
   initialSummary,
@@ -188,6 +229,8 @@ export default function AdminPanel({
   const [gamesData, setGamesData] = useState(initialGames);
   const [playersLoading, setPlayersLoading] = useState(false);
   const [gamesLoading, setGamesLoading] = useState(false);
+  const [playersExporting, setPlayersExporting] = useState(false);
+  const [gamesExporting, setGamesExporting] = useState(false);
 
   const skipPlayersFirst = useRef(true);
   const skipGamesFirst = useRef(true);
@@ -403,6 +446,46 @@ export default function AdminPanel({
     setGamePage(1);
   }
 
+  async function exportPlayers() {
+    if (playersExporting) return;
+    setPlayersExporting(true);
+    try {
+      await downloadExport(
+        playersExportUrl({
+          difficulty,
+          search: debouncedPlayerSearch,
+          role: playerRole,
+          sort: playerSort,
+        })
+      );
+    } catch {
+      // ignore — admin can retry
+    } finally {
+      setPlayersExporting(false);
+    }
+  }
+
+  async function exportGames() {
+    if (gamesExporting) return;
+    setGamesExporting(true);
+    try {
+      await downloadExport(
+        gamesExportUrl({
+          difficulty,
+          search: debouncedGameSearch,
+          result: gameResult,
+          from: dateFrom,
+          to: dateTo,
+          sort: gameSort,
+        })
+      );
+    } catch {
+      // ignore — admin can retry
+    } finally {
+      setGamesExporting(false);
+    }
+  }
+
   const pagePlayers = playersData?.players || [];
   const playerTotalPages = playersData?.totalPages || 1;
   const safePlayerPage = Math.min(playerPage, playerTotalPages);
@@ -437,8 +520,27 @@ export default function AdminPanel({
         </div>
       </div>
 
-      <section className="space-y-4">
-        <h2 className="text-base font-semibold text-slate-100 sm:text-lg">Players</h2>
+      <section className="space-y-3">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <h2 className="text-base font-semibold text-slate-100 sm:text-lg">Players</h2>
+          <div className="flex flex-col items-start gap-1 sm:items-end">
+            <button
+              type="button"
+              onClick={exportPlayers}
+              disabled={playersExporting}
+              className={`inline-flex cursor-pointer items-center gap-2 rounded-xl border border-teal-500/40 bg-teal-500/10 px-3 py-2 text-sm text-teal-200 transition hover:border-teal-400/60 hover:bg-teal-500/20 ${
+                playersExporting ? "pointer-events-none opacity-50" : ""
+              }`}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/excel.png" alt="" width={18} height={18} className="h-[18px] w-[18px] shrink-0" />
+              {playersExporting ? "กำลัง Export…" : "Export Excel"}
+            </button>
+            <p className="max-w-[18rem] text-xs text-slate-500 sm:text-right mt-1">
+              Export ตาม filter — ชื่อผู้เล่นและอีเมลถูก mask ในไฟล์
+            </p>
+          </div>
+        </div>
 
         <div className="relative z-20 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
           <FilterInput
@@ -517,10 +619,29 @@ export default function AdminPanel({
         />
       </section>
 
-      <section className="space-y-4">
-        <h2 className="text-base font-semibold text-slate-100 sm:text-lg">
-          Game History — {difficultyLabel(difficulty)}
-        </h2>
+      <section className="space-y-3">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <h2 className="text-base font-semibold text-slate-100 sm:text-lg">
+            Game History — {difficultyLabel(difficulty)}
+          </h2>
+          <div className="flex flex-col items-start gap-1 sm:items-end">
+            <button
+              type="button"
+              onClick={exportGames}
+              disabled={gamesExporting}
+              className={`inline-flex cursor-pointer items-center gap-2 rounded-xl border border-teal-500/40 bg-teal-500/10 px-3 py-2 text-sm text-teal-200 transition hover:border-teal-400/60 hover:bg-teal-500/20 ${
+                gamesExporting ? "pointer-events-none opacity-50" : ""
+              }`}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/excel.png" alt="" width={18} height={18} className="h-[18px] w-[18px] shrink-0" />
+              {gamesExporting ? "กำลัง Export…" : "Export Excel"}
+            </button>
+            <p className="max-w-[18rem] text-xs text-slate-500 sm:text-right mt-1">
+              Export ตาม filter — ชื่อผู้เล่นถูก mask ในไฟล์
+            </p>
+          </div>
+        </div>
 
         <div className="relative z-20 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
           <FilterInput

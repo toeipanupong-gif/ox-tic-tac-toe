@@ -1,9 +1,10 @@
-import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { getOrCreateAllStats } from "@/lib/game/stats";
+import { prisma } from "@/lib/prisma";
+import { getOrCreateAllStats, UserNotFoundError } from "@/lib/game/stats";
 import DashboardStats from "@/components/dashboard/DashboardStats";
 import StartGameButton from "@/components/game/StartGameButton";
 import { createPageMetadata } from "@/lib/seo";
+import { redirect } from "next/navigation";
 
 export const metadata = createPageMetadata({
   title: "Dashboard",
@@ -11,11 +12,33 @@ export const metadata = createPageMetadata({
   path: "/dashboard",
 });
 
+function clearSessionAndLogin() {
+  redirect("/api/auth/invalidate");
+}
+
 export default async function DashboardPage() {
   const session = await auth();
-  if (!session?.user?.id) redirect("/login");
+  if (!session?.user?.id) {
+    clearSessionAndLogin();
+  }
 
-  const statsByDifficulty = await getOrCreateAllStats(session.user.id);
+  const dbUser = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { id: true },
+  });
+  if (!dbUser) {
+    clearSessionAndLogin();
+  }
+
+  let statsByDifficulty;
+  try {
+    statsByDifficulty = await getOrCreateAllStats(dbUser.id);
+  } catch (error) {
+    if (error instanceof UserNotFoundError) {
+      clearSessionAndLogin();
+    }
+    throw error;
+  }
 
   const serializable = Object.fromEntries(
     Object.entries(statsByDifficulty).map(([level, stat]) => [

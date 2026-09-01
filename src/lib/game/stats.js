@@ -9,7 +9,26 @@ const EMPTY_STAT = {
   winStreak: 0,
 };
 
+export class UserNotFoundError extends Error {
+  constructor(userId) {
+    super(`User not found: ${userId}`);
+    this.name = "UserNotFoundError";
+    this.userId = userId;
+  }
+}
+
+async function assertUserExists(userId, tx = prisma) {
+  if (!userId) throw new UserNotFoundError(userId);
+  const user = await tx.user.findUnique({
+    where: { id: userId },
+    select: { id: true },
+  });
+  if (!user) throw new UserNotFoundError(userId);
+  return user;
+}
+
 export async function ensureUserStat(userId, difficulty, tx = prisma) {
+  await assertUserExists(userId, tx);
   const level = normalizeDifficulty(difficulty);
   return tx.userStat.upsert({
     where: {
@@ -30,9 +49,12 @@ export async function getUserStat(userId, difficulty, tx = prisma) {
 }
 
 export async function getOrCreateAllStats(userId, tx = prisma) {
-  const stats = await Promise.all(
-    DIFFICULTIES.map((difficulty) => ensureUserStat(userId, difficulty, tx))
-  );
+  await assertUserExists(userId, tx);
+  // sequential — หลีกเลี่ยง race บน SQLite ตอน upsert พร้อมกัน
+  const stats = [];
+  for (const difficulty of DIFFICULTIES) {
+    stats.push(await ensureUserStat(userId, difficulty, tx));
+  }
   return Object.fromEntries(stats.map((s) => [s.difficulty, s]));
 }
 

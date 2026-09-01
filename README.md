@@ -170,7 +170,9 @@ yarn dev
 | `/game` | เล่นเกม OX กับ Bot ตามระดับ |
 | `/leaderboard` | อันดับตามระดับ |
 | `/profile` | โปรไฟล์ + ประวัติตามระดับ |
-| `/admin` | Admin — ดูสถิติ /ประวัติตามระดับ / Filter + Sort ข้อมูลได้ |
+| `/admin` | Admin — ดูสถิติ /ประวัติตามระดับ / Filter + Sort ข้อมูล / Export ข้อมูลได้ |
+| `/privacy` | นโยบายความเป็นส่วนตัว (Privacy Policy) |
+| `/terms` | ข้อกำหนดการใช้บริการ (Terms of Service) |
 
 ## Security Notes
 

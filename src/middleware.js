@@ -6,13 +6,13 @@ const { auth } = NextAuth(authConfig);
 
 export default auth((req) => {
   const { pathname } = req.nextUrl;
-  const isLoggedIn = !!req.auth;
+  const isLoggedIn = Boolean(req.auth?.user?.id);
 
   if ((pathname === "/login" || pathname === "/") && isLoggedIn) {
     return NextResponse.redirect(new URL("/dashboard", req.nextUrl.origin));
   }
 
-  if (!req.auth && ["/dashboard", "/game", "/profile", "/admin"].some(
+  if (!isLoggedIn && ["/dashboard", "/game", "/profile", "/admin"].some(
     (path) => pathname === path || pathname.startsWith(`${path}/`)
   )) {
     const loginUrl = new URL("/login", req.nextUrl.origin);

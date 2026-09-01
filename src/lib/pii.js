@@ -127,4 +127,35 @@ export function revealUsersPii(users) {
   return users.map(revealUserPii);
 }
 
+/** Mask ชื่อสำหรับ export (ดูค่าจริงได้เฉพาะบนหน้าเว็บ) */
+export function maskName(name) {
+  if (name == null) return "-";
+  const s = String(name).trim();
+  if (!s) return "-";
+  if (s.length === 1) return "*";
+  if (s.length === 2) return `${s[0]}*`;
+  return `${s[0]}${"*".repeat(s.length - 2)}${s[s.length - 1]}`;
+}
+
+/** Mask อีเมลสำหรับ export */
+export function maskEmail(email) {
+  if (email == null) return "-";
+  const s = String(email).trim();
+  if (!s) return "-";
+  const at = s.indexOf("@");
+  if (at <= 0) return maskName(s);
+  const local = s.slice(0, at);
+  const domain = s.slice(at + 1);
+  const maskedLocal =
+    local.length <= 1 ? "*" : `${local[0]}***`;
+  const dot = domain.lastIndexOf(".");
+  const maskedDomain =
+    domain.length === 0
+      ? "***"
+      : dot > 0
+        ? `${domain[0]}***${domain.slice(dot)}`
+        : `${domain[0]}***`;
+  return `${maskedLocal}@${maskedDomain}`;
+}
+
 export { USER_PII_FIELDS };

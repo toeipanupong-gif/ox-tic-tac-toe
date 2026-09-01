@@ -11,14 +11,37 @@ import {
   toStoredUserPii,
 } from "@/lib/pii";
 
+function plainEmailOf(value) {
+  if (!value) return null;
+  return isPiiEncrypted(value) ? decryptPii(value) : value;
+}
+
+/** หา user ใน DB จาก id หรือ email — ไม่ใช้ Google sub ที่ไม่มีในตาราง User */
+async function resolveDbUser(user) {
+  if (user?.id) {
+    const byId = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { id: true, role: true, email: true },
+    });
+    if (byId) return byId;
+  }
+
+  const plainEmail = plainEmailOf(user?.email);
+  if (!plainEmail) return null;
+
+  const emailLookup = computeEmailLookup(plainEmail);
+  if (!emailLookup) return null;
+
+  return prisma.user.findUnique({
+    where: { emailLookup },
+    select: { id: true, role: true, email: true },
+  });
+}
+
 async function syncAdminRole(user) {
   if (!user?.id) return null;
 
-  const plainEmail = user.email
-    ? isPiiEncrypted(user.email)
-      ? decryptPii(user.email)
-      : user.email
-    : null;
+  const plainEmail = plainEmailOf(user.email);
   if (!plainEmail) return null;
 
   const adminEmail = process.env.ADMIN_EMAIL;
@@ -74,15 +97,19 @@ async function ensureUserPiiEncrypted(userId) {
 }
 
 async function ensureDefaultStats(userId) {
-  await Promise.all(
-    DIFFICULTIES.map((difficulty) =>
-      prisma.userStat.upsert({
-        where: { userId_difficulty: { userId, difficulty } },
-        create: { userId, difficulty },
-        update: {},
-      })
-    )
-  );
+  const exists = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true },
+  });
+  if (!exists) return;
+
+  for (const difficulty of DIFFICULTIES) {
+    await prisma.userStat.upsert({
+      where: { userId_difficulty: { userId, difficulty } },
+      create: { userId, difficulty },
+      update: {},
+    });
+  }
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -92,37 +119,50 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     ...authConfig.callbacks,
     async signIn({ user }) {
       try {
-        if (user?.id) await ensureUserPiiEncrypted(user.id);
+        const dbUser = await resolveDbUser(user);
+        if (dbUser?.id) await ensureUserPiiEncrypted(dbUser.id);
       } catch (error) {
         console.error("[auth] ensureUserPiiEncrypted failed", error);
       }
       return true;
     },
     async jwt({ token, user, trigger }) {
-      if (user?.id) {
-        let dbUser = null;
-        try {
-          dbUser = await syncAdminRole(user);
-          await ensureDefaultStats(user.id);
-          await ensureUserPiiEncrypted(user.id);
-        } catch {
-          dbUser = await prisma.user.findUnique({
-            where: { id: user.id },
-            select: { id: true, role: true },
-          });
+      if (user) {
+        const dbUser = await resolveDbUser(user);
+        if (!dbUser?.id) {
+          return { error: "UserNotFound" };
         }
-        token.id = dbUser?.id ?? user.id;
-        token.role = dbUser?.role ?? "USER";
+
+        let role = dbUser.role ?? "USER";
+        try {
+          const synced = await syncAdminRole({
+            id: dbUser.id,
+            email: user.email ?? dbUser.email,
+          });
+          if (synced?.role) role = synced.role;
+          await ensureDefaultStats(dbUser.id);
+          await ensureUserPiiEncrypted(dbUser.id);
+        } catch (error) {
+          console.error("[auth] jwt user sync failed", error);
+        }
+
+        token.id = dbUser.id;
+        token.role = role;
+        delete token.error;
         if (user.name) token.name = user.name;
         if (user.email) token.email = user.email;
+        return token;
       }
 
-      if (trigger === "update" && token.id) {
+      if (token.id) {
         const dbUser = await prisma.user.findUnique({
           where: { id: token.id },
-          select: { role: true },
+          select: { id: true, role: true },
         });
-        if (dbUser) {
+        if (!dbUser) {
+          return { error: "UserNotFound" };
+        }
+        if (trigger === "update") {
           token.role = dbUser.role;
         }
       }
@@ -130,6 +170,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return token;
     },
     async session({ session, token }) {
+      if (token?.error === "UserNotFound" || !token?.id) {
+        return null;
+      }
       if (session.user) {
         session.user.id = token.id;
         session.user.role = token.role ?? "USER";
@@ -150,11 +193,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   events: {
     async createUser({ user }) {
       try {
+        if (!user?.id) return;
         await syncAdminRole(user);
-        if (user?.id) {
-          await ensureDefaultStats(user.id);
-          await ensureUserPiiEncrypted(user.id);
-        }
+        await ensureDefaultStats(user.id);
+        await ensureUserPiiEncrypted(user.id);
       } catch (error) {
         console.error("[auth] createUser syncAdminRole failed", error);
       }
@@ -165,6 +207,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 export async function requireUser() {
   const session = await auth();
   if (!session?.user?.id) return null;
+  const dbUser = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { id: true },
+  });
+  if (!dbUser) return null;
   return session.user;
 }
 

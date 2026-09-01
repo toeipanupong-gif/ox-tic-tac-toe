@@ -9,7 +9,7 @@ import {
   serializeBoard,
 } from "@/lib/game/game-engine";
 import { normalizeDifficulty } from "@/lib/game/difficulty";
-import { getUserStat } from "@/lib/game/stats";
+import { getUserStat, UserNotFoundError } from "@/lib/game/stats";
 
 const bodySchema = z.object({
   difficulty: z.enum(["EASY", "NORMAL", "HARD"]).optional(),
@@ -18,6 +18,14 @@ const bodySchema = z.object({
 export async function POST(request) {
   const session = await auth();
   if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const dbUser = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { id: true },
+  });
+  if (!dbUser) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -30,39 +38,46 @@ export async function POST(request) {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 
-  const userId = session.user.id;
+  const userId = dbUser.id;
   const board = createBoard();
 
-  const activeGame = await prisma.activeGame.upsert({
-    where: { userId },
-    create: {
-      userId,
-      board: serializeBoard(board),
-      status: "PLAYING",
-      difficulty,
-      playerSymbol: PLAYER,
-      botSymbol: BOT,
-    },
-    update: {
-      board: serializeBoard(board),
-      status: "PLAYING",
-      difficulty,
-      playerSymbol: PLAYER,
-      botSymbol: BOT,
-    },
-  });
+  try {
+    const activeGame = await prisma.activeGame.upsert({
+      where: { userId },
+      create: {
+        userId,
+        board: serializeBoard(board),
+        status: "PLAYING",
+        difficulty,
+        playerSymbol: PLAYER,
+        botSymbol: BOT,
+      },
+      update: {
+        board: serializeBoard(board),
+        status: "PLAYING",
+        difficulty,
+        playerSymbol: PLAYER,
+        botSymbol: BOT,
+      },
+    });
 
-  const stat = await getUserStat(userId, difficulty);
+    const stat = await getUserStat(userId, difficulty);
 
-  return NextResponse.json({
-    gameId: activeGame.id,
-    board,
-    status: activeGame.status,
-    difficulty,
-    playerSymbol: activeGame.playerSymbol,
-    botSymbol: activeGame.botSymbol,
-    turn: "PLAYER",
-    score: stat.score,
-    winStreak: stat.winStreak,
-  });
+    return NextResponse.json({
+      gameId: activeGame.id,
+      board,
+      status: activeGame.status,
+      difficulty,
+      playerSymbol: activeGame.playerSymbol,
+      botSymbol: activeGame.botSymbol,
+      turn: "PLAYER",
+      score: stat.score,
+      winStreak: stat.winStreak,
+    });
+  } catch (error) {
+    if (error instanceof UserNotFoundError) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    throw error;
+  }
 }

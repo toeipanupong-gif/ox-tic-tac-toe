@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 const RESULT_META = {
   WIN: {
     title: "คุณชนะ!",
@@ -52,13 +54,21 @@ export default function ResultOverlay({ status, scoreResult, onClose }) {
               : ""}
           </p>
         )}
-        <button
-          type="button"
-          onClick={onClose}
-          className="mt-6 cursor-pointer rounded-xl border border-slate-600/80 bg-slate-900/80 px-5 py-2 text-sm font-semibold text-slate-100 transition hover:border-teal-500/50 hover:text-teal-200"
-        >
-          ปิด
-        </button>
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="cursor-pointer rounded-xl border border-slate-600/80 bg-slate-900/80 px-5 py-2 text-sm font-semibold text-slate-100 transition hover:border-teal-500/50 hover:text-teal-200"
+          >
+            ปิด
+          </button>
+          <Link
+            href="/dashboard"
+            className="cursor-pointer rounded-xl bg-teal-500 px-5 py-2 text-sm font-semibold text-slate-950 transition hover:bg-teal-400"
+          >
+            กลับหน้าแรก
+          </Link>
+        </div>
       </div>
     </div>
   );

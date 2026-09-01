@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import Board from "./Board";
 import ScoreBoard from "./ScoreBoard";
@@ -177,7 +178,7 @@ export default function GameClient({
         <p className="text-center text-sm text-rose-300">{error}</p>
       )}
 
-      <div className="flex justify-center">
+      <div className="flex flex-wrap justify-center gap-3">
         <button
           type="button"
           onClick={startGame}
@@ -186,6 +187,14 @@ export default function GameClient({
         >
           เกมใหม่
         </button>
+        {status !== "PLAYING" && (
+          <Link
+            href="/dashboard"
+            className="cursor-pointer rounded-xl border border-slate-600/80 bg-slate-900/80 px-6 py-3 font-semibold text-slate-100 transition hover:border-teal-500/50 hover:text-teal-200"
+          >
+            กลับหน้าแรก
+          </Link>
+        )}
       </div>
 
       {showResult && (
