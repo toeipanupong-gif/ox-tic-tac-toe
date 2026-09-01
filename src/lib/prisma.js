@@ -17,8 +17,8 @@ let sqlitePragmas = globalForPrisma.__sqlitePragmas;
 if (!sqlitePragmas) {
   sqlitePragmas = (async () => {
     try {
-      await baseClient.$executeRawUnsafe("PRAGMA journal_mode=WAL");
-      await baseClient.$executeRawUnsafe("PRAGMA busy_timeout=5000");
+      await baseClient.$queryRawUnsafe("PRAGMA journal_mode=WAL");
+      await baseClient.$queryRawUnsafe("PRAGMA busy_timeout=5000");
     } catch (err) {
       console.error("[prisma] SQLite pragma init failed", err);
     }

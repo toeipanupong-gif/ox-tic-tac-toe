@@ -11,6 +11,7 @@ export const metadata = createPageMetadata({
   title: "Profile",
   description: "โปรไฟล์ผู้เล่น OX Arena — สถิติและประวัติเกมของคุณ",
   path: "/profile",
+  noIndex: true,
 });
 
 function clearSessionAndLogin() {

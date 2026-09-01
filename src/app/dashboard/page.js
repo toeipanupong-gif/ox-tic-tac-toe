@@ -9,6 +9,7 @@ export const metadata = createPageMetadata({
   title: "Dashboard",
   description: "แดชบอร์ด OX Arena — ดูสถิติคะแนนและเริ่มเล่นกับ Bot",
   path: "/dashboard",
+  noIndex: true,
 });
 
 function clearSessionAndLogin() {

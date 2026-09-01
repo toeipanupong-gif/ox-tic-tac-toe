@@ -8,6 +8,7 @@ export const metadata = createPageMetadata({
   title: "Play",
   description: "เล่น Tic-Tac-Toe กับ Bot ใน OX Arena — เลือกระดับความยากแล้ววัดฝีมือ",
   path: "/game",
+  noIndex: true,
 });
 
 function clearSessionAndLogin() {
